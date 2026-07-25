@@ -1,12 +1,15 @@
 import { Check } from 'lucide-react';
 import { cn } from '../../utils/utils';
 
-const labels = ['Patient Info', 'Upload Scan & Identify', 'Superimpose', 'View Results', 'Download Report'];
+// Three steps, matching the wizard. The previous five described a
+// superimpose / results / download flow that no longer exists — the alignment
+// review covers all of it — so they advertised stages the user never reached.
+const labels = ['Patient Info', 'Scan & Teeth', 'Alignment Review'];
 
 const StepProgress = ({ activeStep }) => {
   return (
     <div className="glass-card p-4 mb-6">
-      <div className="grid grid-cols-1 sm:grid-cols-5 gap-3 sm:gap-1">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-1">
         {labels.map((label, index) => {
           const stepNumber = index + 1;
           const complete = stepNumber < activeStep;

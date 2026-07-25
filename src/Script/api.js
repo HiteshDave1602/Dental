@@ -157,101 +157,68 @@ export const employeeService = {
 // plus per-instance operations. Each function returns the parsed JSON body
 // (axios `res.data`) to match the shapes the ported components expect.
 
-// Create an alignment job: uploads the scene mesh (STL/PLY/OBJ) and one or more
-// vendor selections. `vendor_id` is repeated once per vendor (FastAPI decodes
-// repeated form keys into a list[str]), so the FormData is built by hand rather
-// than via postMultipart (which can't emit duplicate keys).
-export const createJob = async (sceneFile, vendorIds) => {
-    const form = new FormData();
-    form.append('scene', sceneFile);
-    (Array.isArray(vendorIds) ? vendorIds : [vendorIds]).forEach((id) => {
-        if (id) form.append('vendor_id', id);
-    });
-    const res = await employeeService.post('/api/jobs', form);
-    return res.data;
+// ── Alignment review, scoped to a case ──────────────────────────────────────
+//
+// Every call below targets /user/cases/{caseId}/alignment/*. The scan comes
+// from the case (uploaded in the wizard), so there is no separate job creation
+// or mesh upload here — a job is submitted server-side when the scan lands.
+// This replaced a standalone /api/* adapter whose jobs lived in memory and were
+// never linked to a case, so a refresh lost the work.
+
+const alignmentBase = (caseId) => `/user/cases/${caseId}/alignment`;
+const unwrap = (res) => res.data?.data ?? res.data;
+
+// The full viewer payload: instances, artifact URLs, and any angle/corrector
+// results already computed — so a refresh mid-workflow restores the view.
+export const getAlignmentState = async (caseId) =>
+    unwrap(await employeeService.get(`${alignmentBase(caseId)}/viewer`));
+
+// Detection progress. Alignment takes minutes, so the workflow polls this until
+// the job reaches awaiting_review.
+export const getAlignmentStatus = async (caseId) =>
+    unwrap(await employeeService.get(`${alignmentBase(caseId)}/status`));
+
+// Vendors registered on the engine, for the per-instance scan-body dropdowns.
+export const listVendors = async (caseId) => {
+    const data = unwrap(await employeeService.get(`${alignmentBase(caseId)}/vendors`));
+    return Array.isArray(data) ? data : data?.vendors || [];
 };
 
-// Replace one instance's SCAN BODY with another registered vendor's. Scan-body
-// + display/export-only: the backend rewrites aligned_instance_NN.stl (+ scene
-// composite) and stores the override as scan_body_vendor_id. Computation
-// vendor, analog STLs, correctors, and angle_results are untouched — no
-// recalculation needed afterward.
-export const setInstanceVendor = async (jobId, instanceIndex, vendorId) => {
-    const res = await employeeService.post(
-        `/api/jobs/${jobId}/instances/${instanceIndex}/vendor`,
+// Replace one instance's SCAN BODY with another registered vendor's.
+// Display/export-only: the computation vendor, analogs, correctors and angle
+// results are untouched, so nothing needs recomputing afterwards.
+export const setInstanceVendor = async (caseId, instanceIndex, vendorId) =>
+    unwrap(await employeeService.post(
+        `${alignmentBase(caseId)}/instances/${instanceIndex}/scan-body`,
         { vendor_id: vendorId },
-        { headers: { 'Content-Type': 'application/json' } }
-    );
-    return res.data;
-};
+    ));
 
-// Full registry of vendors ([{id, name, description}]) — NOT job-scoped.
-export const listVendors = async () => {
-    const res = await employeeService.get('/api/vendors');
-    return res.data?.vendors || [];
-};
-
-// Admin library company names shaped like the pathfinder vendor list
-// ({id, name}) so the ported UI (UploadForm presets + per-instance scan-body
-// dropdowns) can consume them in place of the /api/vendors endpoint.
-export const listCompanyVendors = async () => {
-    const res = await employeeService.get('/admin/brands');
-    const raw = res.data?.data ?? res.data ?? [];
-    return raw.map((b) =>
-        typeof b === 'string'
-            ? { id: b, name: b }
-            : { id: b.id ?? b.company_name ?? b.name, name: b.company_name ?? b.name ?? b.id }
-    );
-};
-
-// Set the per-instance z-axis rotation (clocking). One angle clocks BOTH analog
-// STLs (pure + with-scan-body) plus the cube+analogs composite. Does NOT
-// invalidate angle_results or corrector_results.
-export const rotateAnalog = async (jobId, instanceIndex, angleDeg) => {
-    const res = await employeeService.post(
-        `/api/jobs/${jobId}/instances/${instanceIndex}/rotate-analog`,
+// Per-instance analog clocking. Does NOT invalidate angle or corrector results
+// (rotation is about the insertion axis).
+export const rotateAnalog = async (caseId, instanceIndex, angleDeg) =>
+    unwrap(await employeeService.post(
+        `${alignmentBase(caseId)}/instances/${instanceIndex}/rotation`,
         { angle_deg: angleDeg },
-        { headers: { 'Content-Type': 'application/json' } }
-    );
-    return res.data;
-};
+    ));
 
-export const getJob = async (jobId) => {
-    const res = await employeeService.get(`/api/jobs/${jobId}`);
-    return res.data;
-};
+// Remove a wrongly-placed instance. Invalidates angle results.
+export const deleteInstance = async (caseId, instanceIndex) =>
+    unwrap(await employeeService.delete(`${alignmentBase(caseId)}/instances/${instanceIndex}`));
 
-// Trigger post-processing to calculate insertion angles and generate the final composite.
-export const calculateAngles = async (jobId) => {
-    const res = await employeeService.post(`/api/jobs/${jobId}/calculate-angles`);
-    return res.data;
-};
+// Targeted search for a missed implant around a clicked 3D point. Runs
+// asynchronously on the engine; poll the viewer until it settles.
+export const searchAroundPoint = async (caseId, x, y, z, _searchRadius = null, vendorId = null) =>
+    unwrap(await employeeService.post(`${alignmentBase(caseId)}/instances/search`, {
+        x, y, z, vendor_id: vendorId || null,
+    }));
 
-// User-guided targeted search for a missed instance. The user clicks a 3D point
-// in the viewer; this runs constrained registration in a sphere around it.
-// Returns { accepted, instance?, reason?, angle_results_invalidated }.
-export const searchAroundPoint = async (jobId, x, y, z, searchRadius = null, vendorId = null) => {
-    const body = { x, y, z };
-    if (searchRadius !== null && searchRadius !== undefined) body.search_radius = searchRadius;
-    if (vendorId) body.vendor_id = vendorId;
-    const res = await employeeService.post(`/api/jobs/${jobId}/search-around-point`, body, {
-        headers: { 'Content-Type': 'application/json' },
-    });
-    return res.data;
-};
+export const calculateAngles = async (caseId) =>
+    unwrap(await employeeService.post(`${alignmentBase(caseId)}/angles`));
 
-// Remove a wrongly-placed instance (false positive). Invalidates angle_results.
-export const deleteInstance = async (jobId, instanceIndex) => {
-    const res = await employeeService.delete(`/api/jobs/${jobId}/instances/${instanceIndex}`);
-    return res.data;
-};
-
-// Place pre-modeled angle-corrector STLs on each analog instance. Requires
-// calculateAngles() to have been called first.
-export const placeAngleCorrectors = async (jobId) => {
-    const res = await employeeService.post(`/api/jobs/${jobId}/place-angle-correctors`);
-    return res.data;
-};
+// Final step: places correctors AND records the results against the case's
+// teeth, so they appear in My Cases.
+export const placeAngleCorrectors = async (caseId) =>
+    unwrap(await employeeService.post(`${alignmentBase(caseId)}/correctors`));
 
 const api = {
     auth: {

@@ -1,10 +1,9 @@
 import { useState, useCallback, useEffect } from 'react';
 import {
-  createJob, getJob, calculateAngles, placeAngleCorrectors, searchAroundPoint,
-  deleteInstance, rotateAnalog, setInstanceVendor, listCompanyVendors,
+  getAlignmentState, calculateAngles, placeAngleCorrectors, searchAroundPoint,
+  deleteInstance, rotateAnalog, setInstanceVendor, listVendors,
   extractErrorMessage,
 } from '../../Script/api';
-import { useJobWebSocket } from './useJobWebSocket';
 import {
   Box,
   Typography,
@@ -15,31 +14,29 @@ import {
   Container,
   Stack,
   Fade,
-  Button,
   IconButton, Tooltip,
   FormControl, Select, MenuItem,
 } from '@mui/material';
 import { ThemeProvider } from '@mui/material/styles';
-import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
-import UploadForm from './UploadForm';
 import JobDashboard from './JobDashboard';
 import ResultsDisplay from './ResultsDisplay';
 import Viewer3D from './Viewer3D';
-import HeroSection from './HeroSection';
-import LoadingScreen from './LoadingScreen';
 import theme from './theme';
 
-// Ported from the standalone pathfinder app's App.jsx. Top-level state for the
-// scan-body alignment workflow: job lifecycle, visibility toggles, mutation
-// handlers, results invalidation rules. Wrapped in a scoped MUI ThemeProvider
-// so it themes correctly when embedded in the (Tailwind) employee panel.
-function PathfinderApp() {
-  const [jobId, setJobId] = useState(null);
+// The scan-body alignment review, for one case.
+//
+// Originally ported from a standalone app, where it owned the whole lifecycle:
+// it uploaded its own mesh and created a job that lived in the middleware's
+// memory, disconnected from any case. It now reads the case's alignment job
+// (submitted when the scan was uploaded in the wizard), so results are
+// recorded against the case and a page refresh resumes where the user left
+// off. Wrapped in a scoped MUI ThemeProvider so it themes correctly inside the
+// otherwise-Tailwind employee panel.
+function PathfinderApp({ caseId, onComplete }) {
   const [job, setJob] = useState(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [wsEvents, setWsEvents] = useState([]);
   const [isCalculatingAngles, setIsCalculatingAngles] = useState(false);
   const [isPlacingCorrectors, setIsPlacingCorrectors] = useState(false);
   const [seedPoint, setSeedPoint] = useState(null);
@@ -53,18 +50,55 @@ function PathfinderApp() {
   // Drives the viewer's live preview while the slider is dragged; cleared on Save.
   const [analogRotationDrafts, setAnalogRotationDrafts] = useState({});
 
-  // Full registry of vendors ([{id, name, description}]) — NOT job-scoped. An
-  // instance's scan body can be reassigned to ANY registered vendor, so the
-  // per-instance vendor dropdowns list all of them. Falls back to [] on fetch
-  // error, which hides the dropdowns (read-only vendor captions remain).
+  // Vendors registered on the alignment engine. An instance's scan body can be
+  // swapped to any of them, so the per-instance dropdowns list them all. Falls
+  // back to [] on error, which hides the dropdowns and leaves read-only vendor
+  // captions in place.
   const [allVendors, setAllVendors] = useState([]);
   useEffect(() => {
+    if (!caseId) return undefined;
     let cancelled = false;
-    listCompanyVendors()
+    listVendors(caseId)
       .then((v) => { if (!cancelled) setAllVendors(v); })
       .catch(() => { if (!cancelled) setAllVendors([]); });
     return () => { cancelled = true; };
-  }, []);
+  }, [caseId]);
+
+  // The workflow reads the case's own alignment job rather than creating one:
+  // the scan was uploaded earlier in the wizard and a job was submitted then.
+  // Because state lives server-side, refreshing the page mid-review restores
+  // everything — including angle and corrector results already computed.
+  const loadState = useCallback(async () => {
+    if (!caseId) return null;
+    const state = await getAlignmentState(caseId);
+    setJob(state);
+    return state;
+  }, [caseId]);
+
+  useEffect(() => {
+    if (!caseId) return undefined;
+    let cancelled = false;
+    let timer;
+
+    // Detection takes minutes, so poll until the engine settles. The old
+    // WebSocket progress channel belonged to the retired /api adapter.
+    const tick = async () => {
+      try {
+        const state = await loadState();
+        if (cancelled) return;
+        if (state?.status === 'aligning') {
+          timer = setTimeout(tick, 4000);
+        }
+      } catch (e) {
+        if (!cancelled) setError(extractErrorMessage(e, 'Could not load the alignment job'));
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    };
+    tick();
+
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [caseId, loadState]);
 
   // Whenever the job's instance list changes (alignment completes, search adds
   // one, delete removes one), make sure each instance index has an explicit
@@ -87,97 +121,44 @@ function PathfinderApp() {
     });
   }, [job?.summary?.instances]);
 
-  // Callback for WebSocket to update state
-  const handleWsMessage = useCallback((data) => {
-    setWsEvents(prev => [...prev, data]);
-    if (data.type === 'done') {
-      getJob(jobId).then(setJob);
-    }
-  }, [jobId]);
-
-  useJobWebSocket(jobId, handleWsMessage);
-
-  const handleSubmit = async ({ scene, vendorIds }) => {
-    setIsSubmitting(true);
-    setError(null);
-    setJob(null);
-    setJobId(null);
-    setWsEvents([]); // Reset events on new submission
-    setVisibleInstances({ scene: true });
-    setAnalogRotationDrafts({});
-
-    try {
-      const res = await createJob(scene, vendorIds);
-      setJobId(res.job_id);
-    } catch (err) {
-      // extractErrorMessage, not err.message: axios rejects with a generic
-      // "Request failed with status code 400", which hides the backend's
-      // actual explanation (e.g. which library needs an alignment vendor).
-      setError(extractErrorMessage(err, 'Failed to create job'));
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
   const handleVisibilityChange = (key) => {
     setVisibleInstances(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
-  const handleReset = () => {
-    setJobId(null);
-    setJob(null);
-    setWsEvents([]);
-    setVisibleInstances({ scene: true });
-    setHoveredInstance(null);
-    setError(null);
-    setIsCalculatingAngles(false);
-    setIsPlacingCorrectors(false);
-    setSeedPoint(null);
-    setIsSearching(false);
-    setSearchFailureReason(null);
-    setIsDeleting(false);
-  };
-
   const handleCalculateAngles = useCallback(async () => {
-    if (!jobId || !job || job.status !== 'completed') return;
+    if (!caseId || !job || job.status !== 'completed') return;
     if (job.calculateAngles || isCalculatingAngles) return;
     setError(null);
-    let cancelled = false;
     try {
       setIsCalculatingAngles(true);
-      const result = await calculateAngles(jobId);
-      if (cancelled) return;
+      const result = await calculateAngles(caseId);
       setJob(prev => (prev ? { ...prev, calculateAngles: result } : prev));
     } catch (e) {
-      if (!cancelled) setError(extractErrorMessage(e, 'Failed to calculate insertion angles'));
+      setError(extractErrorMessage(e, 'Failed to calculate insertion angles'));
     } finally {
-      if (!cancelled) setIsCalculatingAngles(false);
+      setIsCalculatingAngles(false);
     }
-    return () => {
-      cancelled = true;
-    };
-  }, [jobId, job, isCalculatingAngles]);
+  }, [caseId, job, isCalculatingAngles]);
 
+  // Final step. As well as placing correctors, this records the results
+  // against the case's teeth server-side, which is what makes them appear in
+  // My Cases — the workflow is no longer a detached tool.
   const handlePlaceAngleCorrectors = useCallback(async () => {
-    if (!jobId || !job || job.status !== 'completed') return;
+    if (!caseId || !job || job.status !== 'completed') return;
     if (!job.calculateAngles?.instance_results) return;
     if (job.placeCorrectors || isPlacingCorrectors) return;
     setError(null);
-    let cancelled = false;
     try {
       setIsPlacingCorrectors(true);
-      const result = await placeAngleCorrectors(jobId);
-      if (cancelled) return;
+      const result = await placeAngleCorrectors(caseId);
       setJob(prev => (prev ? { ...prev, placeCorrectors: result } : prev));
+      if (onComplete) onComplete(result);
     } catch (e) {
-      if (!cancelled) setError(extractErrorMessage(e, 'Failed to place angle correctors'));
+      setError(extractErrorMessage(e, 'Failed to place angle correctors'));
     } finally {
-      if (!cancelled) setIsPlacingCorrectors(false);
+      setIsPlacingCorrectors(false);
     }
-    return () => {
-      cancelled = true;
-    };
-  }, [jobId, job, isPlacingCorrectors]);
+  }, [caseId, job, isPlacingCorrectors, onComplete]);
 
   const handleSeedSelected = useCallback((point) => {
     setSeedPoint(point);
@@ -194,45 +175,58 @@ function PathfinderApp() {
   // computed over the old instance set and are stale by definition once the
   // set changes. The user re-triggers them via the existing buttons.
   const refreshJobAfterMutation = useCallback(async () => {
-    const updated = await getJob(jobId);
+    const updated = await getAlignmentState(caseId);
     setJob({
       ...updated,
       calculateAngles: null,
       placeCorrectors: null,
     });
-  }, [jobId]);
+  }, [caseId]);
 
   const handleSearchAroundPoint = useCallback(async (vendorId = null) => {
-    if (!seedPoint || !jobId || isSearching) return;
+    if (!seedPoint || !caseId || isSearching) return;
     setError(null);
     setSearchFailureReason(null);
     setIsSearching(true);
     try {
-      const result = await searchAroundPoint(jobId, seedPoint.x, seedPoint.y, seedPoint.z, null, vendorId);
-      if (result.accepted) {
-        await refreshJobAfterMutation();
-        // Auto-make the new instance visible
-        if (result.instance?.index) {
-          setVisibleInstances(prev => ({ ...prev, [result.instance.index]: true }));
-        }
+      // The engine runs this asynchronously, so poll until the job leaves the
+      // searching state, then reload to see whether an instance was added.
+      const before = job?.summary?.instances?.length ?? 0;
+      await searchAroundPoint(caseId, seedPoint.x, seedPoint.y, seedPoint.z, null, vendorId);
+
+      let state = null;
+      for (let attempt = 0; attempt < 60; attempt += 1) {
+        // eslint-disable-next-line no-await-in-loop
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+        // eslint-disable-next-line no-await-in-loop
+        state = await getAlignmentState(caseId);
+        if (state?.engine_status !== 'searching') break;
+      }
+
+      const after = state?.summary?.instances ?? [];
+      if (after.length > before) {
+        setJob({ ...state, calculateAngles: null, placeCorrectors: null });
+        const added = after[after.length - 1];
+        if (added?.index) setVisibleInstances(prev => ({ ...prev, [added.index]: true }));
         setSeedPoint(null);
       } else {
-        setSearchFailureReason(result.reason || 'No instance found at that location.');
+        if (state) setJob(prev => ({ ...state, calculateAngles: prev?.calculateAngles ?? null, placeCorrectors: prev?.placeCorrectors ?? null }));
+        setSearchFailureReason('No implant was found at that location. Try clicking closer to the socket.');
       }
     } catch (e) {
       setError(extractErrorMessage(e, 'Targeted search failed'));
     } finally {
       setIsSearching(false);
     }
-  }, [seedPoint, jobId, isSearching, refreshJobAfterMutation]);
+  }, [seedPoint, caseId, isSearching, job]);
 
   const handleDeleteInstance = useCallback(async (instanceIndex) => {
-    if (!jobId || isDeleting) return;
+    if (!caseId || isDeleting) return;
     if (!window.confirm(`Delete instance #${instanceIndex}? Any angle calculations will be invalidated.`)) return;
     setError(null);
     setIsDeleting(true);
     try {
-      await deleteInstance(jobId, instanceIndex);
+      await deleteInstance(caseId, instanceIndex);
       await refreshJobAfterMutation();
       // Drop the visibility entry for the removed instance
       setVisibleInstances(prev => {
@@ -244,7 +238,7 @@ function PathfinderApp() {
     } finally {
       setIsDeleting(false);
     }
-  }, [jobId, isDeleting, refreshJobAfterMutation]);
+  }, [caseId, isDeleting, refreshJobAfterMutation]);
 
   // Replace an instance's SCAN BODY with another vendor's scan body.
   // Scan-body-only + display/export-only: the backend rewrites ONLY
@@ -256,11 +250,11 @@ function PathfinderApp() {
   // results. The rewritten aligned STL reloads because its cache-buster URL
   // includes the scan-body vendor id.
   const handleSetInstanceVendor = useCallback(async (instanceIndex, vendorId) => {
-    if (!jobId) return;
+    if (!caseId) return;
     setError(null);
     try {
-      await setInstanceVendor(jobId, instanceIndex, vendorId);
-      const updated = await getJob(jobId);
+      await setInstanceVendor(caseId, instanceIndex, vendorId);
+      const updated = await getAlignmentState(caseId);
       setJob((prev) => ({
         ...updated,
         calculateAngles: prev?.calculateAngles ?? null,
@@ -269,7 +263,7 @@ function PathfinderApp() {
     } catch (e) {
       setError(extractErrorMessage(e, 'Scan-body replacement failed'));
     }
-  }, [jobId]);
+  }, [caseId]);
 
   // Live-preview draft: the slider pushes its in-progress value here on every
   // change so the viewer can rotate the loaded STL in real time (no reload, no
@@ -287,12 +281,14 @@ function PathfinderApp() {
   // summary.instances[i].analog_z_rotation_deg in place so the slider's
   // saved value re-syncs and the viewer's cache-buster URL changes.
   const handleRotateAnalog = useCallback(async (instanceIndex, angleDeg) => {
-    if (!jobId) throw new Error('No active job');
-    const result = await rotateAnalog(jobId, instanceIndex, angleDeg);
+    if (!caseId) throw new Error('No active case');
+    const updated = await rotateAnalog(caseId, instanceIndex, angleDeg);
+    const savedDeg = (updated?.instances || []).find((i) => i.index === instanceIndex)
+      ?.analog_z_rotation_deg ?? angleDeg;
     setJob((prev) => {
       if (!prev?.summary?.instances) return prev;
       const updatedInstances = prev.summary.instances.map((i) =>
-        i.index === instanceIndex ? { ...i, analog_z_rotation_deg: result.angle_deg } : i
+        i.index === instanceIndex ? { ...i, analog_z_rotation_deg: savedDeg } : i
       );
       return { ...prev, summary: { ...prev.summary, instances: updatedInstances } };
     });
@@ -303,14 +299,11 @@ function PathfinderApp() {
       const { [instanceIndex]: _, ...rest } = prev;
       return rest;
     });
-    return result;
-  }, [jobId]);
+    return { angle_deg: savedDeg };
+  }, [caseId]);
 
   return (
     <ThemeProvider theme={theme}>
-      {/* Full-screen loading overlay */}
-      {isSubmitting && <LoadingScreen />}
-
       <Box
         sx={{
           bgcolor: 'background.default',
@@ -323,17 +316,8 @@ function PathfinderApp() {
       >
       <Container maxWidth="xl">
         <Stack spacing={{ xs: 3, sm: 4 }}>
-          {/* Hero Section - shown only when no job is running */}
-          {!jobId && <HeroSection />}
-
-          {/* Upload Section */}
-          {!jobId && (
-            <Fade in timeout={500}>
-              <Box>
-                <UploadForm onSubmit={handleSubmit} isSubmitting={isSubmitting} />
-              </Box>
-            </Fade>
-          )}
+          {/* No upload form here: the scan was uploaded with the case, and a
+              job was submitted server-side at that point. */}
 
           {/* Error Display */}
           {error && (
@@ -353,29 +337,33 @@ function PathfinderApp() {
             </Fade>
           )}
 
-          {/* Processing Dashboard */}
-          {jobId && !job && <JobDashboard events={wsEvents} />}
+          {/* Detection in progress. Alignment takes minutes; the state above
+              polls until the engine reports instances. */}
+          {(isLoading || job?.status === 'aligning') && (
+            <JobDashboard events={[{ type: 'status', stage: 'processing', message: 'Detecting implants in the scan' }]} />
+          )}
+
+          {job?.status === 'failed' && (
+            <Paper elevation={0} sx={{ p: 3, bgcolor: 'error.dark', border: '1px solid', borderColor: 'error.main', borderRadius: 3 }}>
+              <Typography color="error.light">
+                Alignment failed: {job.error || 'the compute service could not process this scan.'}
+              </Typography>
+            </Paper>
+          )}
+
+          {!isLoading && !job?.job_id && (
+            <Paper elevation={0} sx={{ p: 3, border: '1px solid', borderColor: 'divider', borderRadius: 3 }}>
+              <Typography color="text.secondary">
+                No alignment job yet for this case. Upload a scan and assign at least one
+                tooth to a library mapped to an alignment vendor.
+              </Typography>
+            </Paper>
+          )}
 
           {/* Results Section */}
           {job?.status === 'completed' && job.summary && (
             <Fade in timeout={800}>
               <Box>
-                {/* Reset Button */}
-                <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
-                  <Button
-                    variant="outlined"
-                    startIcon={<RestartAltIcon />}
-                    onClick={handleReset}
-                    sx={{
-                      borderRadius: 2,
-                      fontSize: { xs: '0.8rem', sm: '0.875rem' },
-                      px: { xs: 2, sm: 3 },
-                    }}
-                  >
-                    Start New Analysis
-                  </Button>
-                </Box>
-
                 {/* Main Viewer and Controls */}
                 <Box
                   sx={{

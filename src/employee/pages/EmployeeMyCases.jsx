@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { Search } from 'lucide-react';
+import { Fragment, useEffect, useState } from 'react';
+import { ChevronDown, ChevronUp, Search } from 'lucide-react';
 import api, { notifyError } from '../../Script/api';
 
 const STATUS_CLASS = {
@@ -9,6 +9,12 @@ const STATUS_CLASS = {
   failed: 'bg-red-500/20 text-red-200 border-red-400/30',
 };
 
+const TOLERANCE_CLASS = {
+  within: 'text-emerald-300',
+  marginal: 'text-amber-300',
+  exceeds: 'text-rose-300',
+};
+
 const EmployeeMyCases = () => {
   const [cases, setCases] = useState([]);
   const [total, setTotal] = useState(0);
@@ -16,6 +22,29 @@ const EmployeeMyCases = () => {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [page, setPage] = useState(1);
+
+  // Alignment results per case, loaded on demand. Previously this page showed
+  // nothing about a case's analysis at all — the review workflow's output was
+  // never written back anywhere the dentist could see it.
+  const [expanded, setExpanded] = useState(null);
+  const [results, setResults] = useState({});   // caseId -> analysis | 'loading' | 'none'
+
+  const toggleResults = async (caseId) => {
+    if (expanded === caseId) {
+      setExpanded(null);
+      return;
+    }
+    setExpanded(caseId);
+    if (results[caseId]) return;
+
+    setResults((prev) => ({ ...prev, [caseId]: 'loading' }));
+    try {
+      const res = await api.employee.analysis.results(caseId);
+      setResults((prev) => ({ ...prev, [caseId]: res.data?.data ?? res.data ?? 'none' }));
+    } catch {
+      setResults((prev) => ({ ...prev, [caseId]: 'none' }));
+    }
+  };
 
   const loadCases = async () => {
     setLoading(true);
@@ -120,25 +149,82 @@ const EmployeeMyCases = () => {
                   <th className="p-3">Teeth</th>
                   <th className="p-3">Date</th>
                   <th className="p-3">Status</th>
-                  <th className="p-3">Notes</th>
+                  <th className="p-3">Results</th>
                 </tr>
               </thead>
               <tbody>
-                {cases.map((row) => (
-                  <tr key={row.id} className="border-t border-cyan-400/10 hover:bg-cyan-500/5">
-                    <td className="p-3 text-slate-200 break-words">{row.case_reference}</td>
-                    <td className="p-3 text-slate-300 break-words">{row.patient_name}</td>
-                    <td className="p-3 text-slate-300">{row.patient_age}</td>
-                    <td className="p-3 text-slate-300 break-words">{(row.teeth || []).map((t) => t.tooth_number).join(', ') || '—'}</td>
-                    <td className="p-3 text-slate-300 break-words">{row.case_date || '—'}</td>
-                    <td className="p-3">
-                      <span className={`text-xs px-2 py-1 rounded-full border ${STATUS_CLASS[row.status] || 'border-slate-600 text-slate-400'}`}>
-                        {row.status}
-                      </span>
-                    </td>
-                    <td className="p-3 text-slate-400 break-words text-xs">{row.doctor_notes || '—'}</td>
-                  </tr>
-                ))}
+                {cases.map((row) => {
+                  const analysis = results[row.id];
+                  const isOpen = expanded === row.id;
+                  return (
+                    <Fragment key={row.id}>
+                      <tr className="border-t border-cyan-400/10 hover:bg-cyan-500/5">
+                        <td className="p-3 text-slate-200 break-words">{row.case_reference}</td>
+                        <td className="p-3 text-slate-300 break-words">{row.patient_name}</td>
+                        <td className="p-3 text-slate-300">{row.patient_age}</td>
+                        <td className="p-3 text-slate-300 break-words">{(row.teeth || []).map((t) => t.tooth_number).join(', ') || '—'}</td>
+                        <td className="p-3 text-slate-300 break-words">{row.case_date || '—'}</td>
+                        <td className="p-3">
+                          <span className={`text-xs px-2 py-1 rounded-full border ${STATUS_CLASS[row.status] || 'border-slate-600 text-slate-400'}`}>
+                            {row.status}
+                          </span>
+                        </td>
+                        <td className="p-3">
+                          <button
+                            type="button"
+                            onClick={() => toggleResults(row.id)}
+                            className="text-xs text-cyan-300 hover:text-cyan-200 inline-flex items-center gap-1"
+                          >
+                            {isOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                            {isOpen ? 'Hide' : 'View'} angles
+                          </button>
+                        </td>
+                      </tr>
+
+                      {isOpen && (
+                        <tr className="border-t border-cyan-400/10 bg-[#031022]">
+                          <td colSpan={7} className="p-3">
+                            {analysis === 'loading' && (
+                              <p className="text-xs text-slate-400">Loading results…</p>
+                            )}
+                            {analysis === 'none' && (
+                              <p className="text-xs text-slate-400">
+                                No analysis recorded yet. Open the case and complete the alignment review.
+                              </p>
+                            )}
+                            {analysis && analysis !== 'loading' && analysis !== 'none' && (
+                              <div className="space-y-2">
+                                <div className="text-xs text-slate-400">
+                                  {analysis.total_implants} implant(s) · average{' '}
+                                  <span className="text-slate-200">{analysis.average_angle}°</span>
+                                  {analysis.engine_version ? ` · engine ${analysis.engine_version}` : ''}
+                                </div>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                                  {(analysis.results || []).map((r) => (
+                                    <div key={r.id} className="rounded-lg border border-cyan-400/20 bg-cyan-500/5 p-2 text-xs">
+                                      <div className="flex items-center justify-between">
+                                        <span className="text-slate-200 font-semibold">Tooth {r.tooth_number}</span>
+                                        <span className={TOLERANCE_CLASS[r.tolerance_status] || 'text-slate-300'}>
+                                          {Number(r.insertion_angle).toFixed(2)}° · {r.tolerance_status}
+                                        </span>
+                                      </div>
+                                      <div className="text-slate-400 mt-1">
+                                        {r.library_name || '—'}
+                                        {r.corrector_angle_deg != null && (
+                                          <> · corrector {r.corrector_angle_deg}°</>
+                                        )}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
+                  );
+                })}
               </tbody>
             </table>
           </>

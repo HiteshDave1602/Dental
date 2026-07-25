@@ -48,11 +48,16 @@ const AlertBanner = ({ msg, variant = 'amber' }) => {
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-// PATHFINDER INTEGRATION: our original Steps 2–5 (upload / library assignment /
-// superimpose / results / download) are replaced by the ported PathfinderWorkflow
-// once the user leaves Step 1. This flag disables their JSX below while keeping
-// the code intact for reference / rollback. Flip to `true` to restore them.
-const SHOW_LEGACY_STEPS = false;
+// The wizard is three steps:
+//
+//   1. Patient details            -> creates the case
+//   2. Scan upload + tooth chart  -> assigns libraries and uploads the scan,
+//                                    which submits an alignment job server-side
+//   3. Alignment review           -> PathfinderWorkflow, scoped to this case
+//
+// Steps 3-5 of the original design (superimpose / results / download) were
+// placeholder UI over a stubbed analysis endpoint. The review workflow covers
+// all three with real engine output, so they have been removed.
 
 const EmployeeNewCase = () => {
   const navigate = useNavigate();
@@ -438,26 +443,29 @@ const EmployeeNewCase = () => {
   const currentAngleForTooth = activeTooth ? (toothAngleSelections?.[activeTooth] ?? '') : '';
   const assignedForTooth = activeTooth ? toothAssignments[activeTooth] : null;
 
-  // ── PATHFINDER HANDOFF ────────────────────────────────────────────────────
-  // Once the patient case is created and the user clicks "Next Step" out of
-  // Step 1, we hand the rest of the flow to the ported pathfinder scan-body
-  // alignment workflow instead of our original Steps 2–5 (which are disabled
-  // below via `false &&` guards). A Back control returns to Step 1.
-  if (currentStep >= 2) {
+  // ── STEP 3 — Alignment review ─────────────────────────────────────────────
+  // The scan was uploaded in step 2, which submitted an alignment job for this
+  // case. The workflow reads that job rather than creating its own, so results
+  // are recorded against the case and a refresh resumes instead of restarting.
+  if (currentStep >= 3) {
     return (
       <div>
-        <StepProgress activeStep={currentStep} />
-        <div className="mt-4">
+        <StepProgress activeStep={3} />
+        <div className="mt-4 flex items-center justify-between gap-3">
           <button
             type="button"
-            onClick={() => goToStep(1)}
+            onClick={() => goToStep(2)}
             className="h-10 px-5 rounded-full border border-slate-600 text-slate-300"
           >
-            ← Back to Patient Details
+            ← Back to Scan &amp; Teeth
           </button>
+          <div className="text-sm text-slate-400">
+            {caseRef ? <>Case <span className="text-slate-200 font-semibold">{caseRef}</span></> : null}
+            {patient.fullName ? <span className="ml-3">{patient.fullName}</span> : null}
+          </div>
         </div>
         <div className="mt-4">
-          <PathfinderWorkflow />
+          <PathfinderWorkflow caseId={caseId} onComplete={() => navigate('/my-cases')} />
         </div>
       </div>
     );
@@ -542,7 +550,7 @@ const EmployeeNewCase = () => {
           They are kept intact for reference / easy rollback. */}
 
       {/* ── STEP 2 — Upload Scan & Library Assignment ────────────────────── */}
-      {SHOW_LEGACY_STEPS && currentStep === 2 && (
+      {currentStep === 2 && (
         <section className="space-y-4">
           {/* Scan upload */}
           <article className="glass-card p-5">
@@ -813,285 +821,6 @@ const EmployeeNewCase = () => {
         </section>
       )}
 
-      {/* ── STEP 3 — Superimpose ─────────────────────────────────────────── */}
-      {SHOW_LEGACY_STEPS && currentStep === 3 && (
-        <section className="grid grid-cols-1 xl:grid-cols-12 gap-4">
-          <div className="xl:col-span-8 glass-card p-4">
-            <h2 className="employee-heading text-lg text-slate-100">Mesh Superimposition</h2>
-            <p className="text-sm text-slate-400 mt-1">
-              Patient scan is superimposed with the selected scan body to align implant geometry precisely.
-            </p>
-            <div className="rounded-xl border border-cyan-400/35 bg-[#031022] h-[380px] mt-4 relative">
-              <span className="absolute left-3 top-3 z-10 text-xs px-2 py-1 rounded-full border border-cyan-400/35 bg-cyan-500/10 text-cyan-200">3D Alignment Viewer</span>
-              <div className="absolute right-3 top-3 z-10 flex gap-2 text-xs">
-                {['Solid', 'Wireframe'].map((mode) => (
-                  <button
-                    key={mode}
-                    type="button"
-                    onClick={() => setWireframeMode(mode === 'Wireframe')}
-                    className={`px-2 py-1 rounded-full ${wireframeMode === (mode === 'Wireframe') ? 'bg-slate-800 text-slate-200' : 'border border-slate-600 text-slate-300'}`}
-                  >
-                    {mode}
-                  </button>
-                ))}
-                <span className="w-px bg-slate-700 mx-0.5" />
-                {['Perspective', 'Orthographic'].map((mode) => (
-                  <button
-                    key={mode}
-                    type="button"
-                    onClick={() => setOrthographicMode(mode === 'Orthographic')}
-                    className={`px-2 py-1 rounded-full ${orthographicMode === (mode === 'Orthographic') ? 'bg-slate-800 text-slate-200' : 'border border-slate-600 text-slate-300'}`}
-                  >
-                    {mode}
-                  </button>
-                ))}
-              </div>
-              <ResultsViewer3D
-                wireframe={wireframeMode}
-                orthographic={orthographicMode}
-                meshes={[
-                  { id: 'patient-scan', url: patientScanUrl, color: '#90caf9', visible: meshVisibility.patientScan },
-                  { id: 'reference-plane', url: analysisResult?.global_artifacts?.reference_plane_url, color: '#4fc3f7', visible: meshVisibility.scanBody },
-                  { id: 'reference-plane-cube', url: analysisResult?.global_artifacts?.reference_plane_cube_url, color: '#81d4fa', visible: meshVisibility.scanBody },
-                  ...(analysisResult?.results || []).map((r) => ({
-                    id: `analog-${r.tooth_number}`,
-                    url: r.artifacts?.analog_url,
-                    color: '#ff4081',
-                    visible: meshVisibility.analog,
-                  })),
-                ]}
-              />
-              <div className="absolute left-3 bottom-3 text-xs text-slate-500">🖱 Drag · Scroll · Right-click to pan</div>
-            </div>
-          </div>
-          <div className="xl:col-span-4 space-y-4">
-            <div className="glass-card p-4 space-y-2">
-              <h3 className="employee-heading text-slate-100">Mesh Visibility</h3>
-              {[
-                { key: 'patientScan', label: 'Patient Scan' },
-                { key: 'scanBody', label: 'Scan Body Mesh' },
-                { key: 'analog', label: 'Analog Preview' },
-              ].map(({ key, label }) => (
-                <label key={key} className="flex items-center justify-between text-slate-300">
-                  <span>{label}</span>
-                  <input
-                    type="checkbox"
-                    checked={meshVisibility[key]}
-                    onChange={(e) => setMeshVisibility((v) => ({ ...v, [key]: e.target.checked }))}
-                  />
-                </label>
-              ))}
-            </div>
-
-            {/* Show assigned library assets for each tooth */}
-            {selectedTeeth.map((tooth) => {
-              const a = toothAssignments[tooth];
-              if (!a?.assets?.length) return null;
-              return (
-                <div key={tooth} className="glass-card p-3 space-y-1">
-                  <p className="text-xs text-slate-400 font-semibold">Tooth {tooth} — {a.company_name} · {a.angle_alignment}°</p>
-                  {a.assets.map((asset) => (
-                    <div key={asset.id} className="flex items-center gap-2 text-[11px] text-slate-400">
-                      <span className="px-1.5 py-0.5 rounded border border-slate-600 text-slate-500 shrink-0">
-                        {asset.asset_type}
-                      </span>
-                      <span className="truncate">{asset.file_name}</span>
-                    </div>
-                  ))}
-                </div>
-              );
-            })}
-
-            <div className="glass-card p-4 space-y-3">
-              <button
-                onClick={handleProcessSuperimposition}
-                disabled={analysisLoading}
-                className="gradient-btn h-10 w-full text-slate-950 font-semibold disabled:opacity-40 inline-flex items-center justify-center gap-2"
-              >
-                {analysisLoading ? <Spinner /> : null}
-                {analysisLoading ? 'Processing…' : 'Process Superimposition'}
-              </button>
-              {analysisError && <AlertBanner msg={analysisError} variant="red" />}
-              {superimposed && analysisResult && (
-                <>
-                  <span className="text-xs px-2 py-1 rounded-full border border-emerald-400/35 bg-emerald-500/20 text-emerald-200">✓ Superimposition Complete</span>
-                  <p className="text-sm text-slate-300">Match score: {avgFitnessPct ?? '—'}%</p>
-                  <p className="text-sm text-slate-300">Time: ⚡ {analysisResult.processing_time_seconds ?? '—'}s</p>
-                </>
-              )}
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* ── STEP 4 — Results ─────────────────────────────────────────────── */}
-      {SHOW_LEGACY_STEPS && currentStep === 4 && (
-        <section className="grid grid-cols-1 xl:grid-cols-10 gap-4">
-          <div className="xl:col-span-6 glass-card p-4 h-[420px] bg-[#031022] border border-cyan-400/35 relative">
-            <h3 className="employee-heading text-slate-100">3D Results Viewer</h3>
-            {!analysisResult ? (
-              <div className="h-[360px] grid place-content-center text-slate-400">
-                {analysisError ? <AlertBanner msg={analysisError} variant="red" /> : <Spinner />}
-              </div>
-            ) : (
-              <>
-                <div className="absolute right-3 top-3 z-10 flex gap-2 text-xs">
-                  {['Solid', 'Wireframe'].map((mode) => (
-                    <button
-                      key={mode}
-                      type="button"
-                      onClick={() => setWireframeMode(mode === 'Wireframe')}
-                      className={`px-2 py-1 rounded-full ${wireframeMode === (mode === 'Wireframe') ? 'bg-slate-800 text-slate-200' : 'border border-slate-600 text-slate-300'}`}
-                    >
-                      {mode}
-                    </button>
-                  ))}
-                  <span className="w-px bg-slate-700 mx-0.5" />
-                  {['Perspective', 'Orthographic'].map((mode) => (
-                    <button
-                      key={mode}
-                      type="button"
-                      onClick={() => setOrthographicMode(mode === 'Orthographic')}
-                      className={`px-2 py-1 rounded-full ${orthographicMode === (mode === 'Orthographic') ? 'bg-slate-800 text-slate-200' : 'border border-slate-600 text-slate-300'}`}
-                    >
-                      {mode}
-                    </button>
-                  ))}
-                </div>
-                {analysisResult.results?.length > 1 && (
-                  <div className="absolute left-3 top-12 z-10 flex flex-wrap gap-1.5">
-                    {analysisResult.results.map((r) => (
-                      <button
-                        key={r.tooth_number}
-                        type="button"
-                        onClick={() => setActiveResultTooth(r.tooth_number)}
-                        className={`px-2 py-1 rounded-full text-[11px] border ${
-                          (activeResultTooth ?? analysisResult.results[0].tooth_number) === r.tooth_number
-                            ? 'bg-cyan-500/20 border-cyan-400/35 text-cyan-200'
-                            : 'border-slate-600 text-slate-400'
-                        }`}
-                      >
-                        Tooth {r.tooth_number}
-                      </button>
-                    ))}
-                  </div>
-                )}
-                <div className="h-[360px] mt-2">
-                  <ResultsViewer3D
-                    wireframe={wireframeMode}
-                    orthographic={orthographicMode}
-                    meshes={(() => {
-                      const activeTooth = activeResultTooth ?? analysisResult.results[0]?.tooth_number;
-                      const active = resultByTooth[activeTooth];
-                      return [
-                        { id: 'patient-scan', url: patientScanUrl, color: '#90caf9', visible: true },
-                        { id: 'scan-body', url: active?.artifacts?.scan_body_url, color: '#ff4081', visible: true },
-                        { id: 'analog-sb', url: active?.artifacts?.analog_with_scan_body_url, color: '#ffd54f', visible: true },
-                        { id: 'corrector', url: active?.corrector_url, color: '#66bb6a', visible: true },
-                        { id: 'corrector-head', url: active?.corrector_head_url, color: '#5c9ce6', visible: true },
-                      ];
-                    })()}
-                  />
-                </div>
-              </>
-            )}
-          </div>
-          <div className="xl:col-span-4 space-y-4">
-            <div className="glass-card p-4">
-              <h4 className="employee-heading text-slate-100">Insertion Angles</h4>
-              <div className="mt-3 space-y-3 text-sm">
-                {(analysisResult?.results || []).map((r) => {
-                  const withinTolerance = r.tolerance_status === 'within';
-                  return (
-                    <div key={r.tooth_number} className="border border-cyan-400/20 rounded-xl p-3">
-                      <p className="text-slate-300">Tooth {r.tooth_number} · {r.library_name || 'N/A'}</p>
-                      <p className="text-cyan-200 text-xl employee-heading mt-1">{r.insertion_angle?.toFixed?.(1) ?? r.insertion_angle}°</p>
-                      <p className={`mt-1 ${withinTolerance ? 'text-emerald-300' : 'text-rose-300'}`}>
-                        {withinTolerance ? '✅ Within Tolerance' : '⚠️ Exceeds Tolerance'}
-                      </p>
-                    </div>
-                  );
-                })}
-                {analysisResult && analysisResult.results?.length === 0 && (
-                  <p className="text-xs text-slate-400">No matched instances in this analysis.</p>
-                )}
-              </div>
-            </div>
-            <div className="glass-card p-4">
-              <h4 className="employee-heading text-slate-100">Summary</h4>
-              <ul className="text-sm text-slate-300 mt-2 space-y-1">
-                <li>Total implants: {analysisResult?.total_implants ?? selectedTeeth.length}</li>
-                <li>Processing time: ⚡ {analysisResult?.processing_time_seconds ?? '—'}s</li>
-              </ul>
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* ── STEP 5 — Download ────────────────────────────────────────────── */}
-      {SHOW_LEGACY_STEPS && currentStep === 5 && (
-        <section className="space-y-4">
-          <article className="glass-card p-6 text-center border-cyan-400/35">
-            <div className="text-cyan-200 text-3xl employee-heading">✦ Case Complete!</div>
-            <p className="text-slate-300 mt-2">Implant alignment analysis ready</p>
-          </article>
-
-          <article className="glass-card p-4">
-            <h3 className="employee-heading text-slate-100">Case Summary</h3>
-            <p className="text-slate-300 mt-2">
-              Patient: {patient.fullName || 'N/A'} · Age: {patient.age || 'N/A'} · Case ID: {caseRef || 'N/A'}
-            </p>
-            <div className="flex flex-wrap gap-2 mt-3">
-              {selectedTeeth.map((t) => (
-                <span key={t} className="px-2 py-1 rounded-full bg-cyan-500/20 text-cyan-200 text-xs">
-                  {t}
-                </span>
-              ))}
-            </div>
-          </article>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <article className="glass-card p-4 border-cyan-400/40">
-              <h4 className="employee-heading text-slate-100">Angulation & Analysis Report</h4>
-              <button className="gradient-btn h-10 w-full mt-4 text-slate-950 font-semibold">Download PDF</button>
-            </article>
-            <article className="glass-card p-4 border-violet-400/40">
-              <h4 className="employee-heading text-slate-100">Case Summary Report</h4>
-              <button className="h-10 w-full mt-4 rounded-full bg-violet-500/30 border border-violet-400/40 text-violet-100">Download PDF</button>
-            </article>
-          </div>
-
-          <div className="flex gap-3 flex-wrap">
-            <button
-              disabled={savingFinal || Boolean(savedRef)}
-              onClick={handleFinalSave}
-              className="h-10 px-5 rounded-full border border-cyan-400/35 text-cyan-200 disabled:opacity-40 inline-flex items-center gap-2"
-            >
-              {savingFinal ? <Spinner /> : null}
-              {savingFinal ? 'Saving…' : savedRef ? `Saved: ${savedRef}` : 'Save Case to Dashboard'}
-            </button>
-
-            {savedRef && (
-              <>
-                <button
-                  onClick={() => navigate('/my-cases')}
-                  className="h-10 px-5 rounded-full bg-cyan-500/20 border border-cyan-400/35 text-cyan-200"
-                >
-                  View My Cases →
-                </button>
-                <button
-                  onClick={handleStartNew}
-                  className="h-10 px-5 rounded-full border border-slate-600 text-slate-300"
-                >
-                  <Trash2 size={14} className="inline mr-2" />
-                  Start New Case
-                </button>
-              </>
-            )}
-          </div>
-        </section>
-      )}
-
       {/* ── Navigation bar ──────────────────────────────────────────────── */}
       <div className="mt-6 flex items-center justify-between gap-3">
         <button
@@ -1123,16 +852,6 @@ const EmployeeNewCase = () => {
               Next Step →
             </button>
           </div>
-        ) : currentStep < 5 ? (
-          <button
-            type="button"
-            disabled={currentStep === 3 && !superimposed}
-            onClick={() => goToStep(currentStep + 1)}
-            className="gradient-btn h-10 px-6 text-slate-950 font-semibold disabled:opacity-40 inline-flex items-center gap-2"
-          >
-            <Sparkles size={14} />
-            Next Step →
-          </button>
         ) : null}
       </div>
     </div>
