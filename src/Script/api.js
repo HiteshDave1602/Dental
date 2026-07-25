@@ -280,6 +280,11 @@ const api = {
         create: async (payload) => apiService.postMultipart('/admin/libraries', payload),
         update: async (libraryId, payload) => apiService.putMultipart(`/admin/libraries/${libraryId}`, payload),
         uploadAsset: async (libraryId, payload) => apiService.postMultipart(`/admin/libraries/${libraryId}/assets`, payload),
+        // Vendors registered on the alignment engine. A library's
+        // alignment_vendor_id must be one of these ids or its cases cannot be
+        // aligned, so the library form selects from this list.
+        // Returns { vendors: [{id, name, description}], available }.
+        alignmentVendors: async () => apiService.get('/admin/alignment-vendors'),
     },
 
     all_libraries: {

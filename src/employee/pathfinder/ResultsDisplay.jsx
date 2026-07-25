@@ -15,7 +15,7 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import SpeedIcon from '@mui/icons-material/Speed';
 import SearchIcon from '@mui/icons-material/Search';
 import { saveAs } from 'file-saver';
-import { RESOLVED_BASE_URL } from '../../Script/api';
+import { RESOLVED_BASE_URL, extractErrorMessage } from '../../Script/api';
 
 // Mesh/artifact paths returned by the backend are relative; the alignment
 // backend serves them at RESOLVED_BASE_URL (ported from VITE_API_BASE). Prefix
@@ -87,7 +87,7 @@ function AnalogRotationControl({ instanceIndex, savedDeg, onSave, onDraftChange 
       if (result && typeof result.angle_deg === 'number') setDraft(result.angle_deg);
       setJustSaved(true);
     } catch (e) {
-      setError(e.message || 'Save failed');
+      setError(extractErrorMessage(e, 'Save failed'));
       setJustSaved(false);
     } finally {
       setSaving(false);

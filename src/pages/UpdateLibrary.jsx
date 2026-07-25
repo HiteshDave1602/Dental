@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
+import AlignmentVendorSelect from '../components/AlignmentVendorSelect';
 import api, { RESOLVED_BASE_URL, extractErrorMessage, notifySuccess, notifyError } from '../Script/api';
 
 const ASSET_LABELS = {
@@ -35,7 +36,13 @@ const UpdateLibrary = () => {
     const [library, setLibrary] = useState(location.state?.library ?? null);
     const [loading, setLoading] = useState(!location.state?.library);
     const [error, setError] = useState('');
-    const [form, setForm] = useState({ company_name: '', manufacturer_id: '', tolerance_degree: '', angle_degree: '' });
+    const [form, setForm] = useState({
+        company_name: '',
+        manufacturer_id: '',
+        tolerance_degree: '',
+        angle_degree: '',
+        alignment_vendor_id: '',
+    });
     const [saving, setSaving] = useState(false);
 
     // Seed the editable fields once the library is available.
@@ -46,6 +53,7 @@ const UpdateLibrary = () => {
             manufacturer_id: library.manufacturer_id ?? '',
             tolerance_degree: library.tolerance_degree ?? '',
             angle_degree: library.angle_degree ?? library.angle_alignment ?? '',
+            alignment_vendor_id: library.alignment_vendor_id ?? '',
         });
     }, [library]);
 
@@ -56,7 +64,12 @@ const UpdateLibrary = () => {
         try {
             const payload = new FormData();
             Object.entries(form).forEach(([key, value]) => {
-                if (value !== undefined && value !== null && value !== '') {
+                // alignment_vendor_id is always sent, including when blank, so a
+                // library can be un-mapped from a vendor. Other blank fields are
+                // omitted (the API treats absent as "leave unchanged").
+                if (key === 'alignment_vendor_id') {
+                    payload.append(key, value ?? '');
+                } else if (value !== undefined && value !== null && value !== '') {
                     payload.append(key, value);
                 }
             });
@@ -172,6 +185,14 @@ const UpdateLibrary = () => {
                             <div className="space-y-3">
                                 <label className="text-sm font-bold text-slate-900 ml-1">Angle Degree</label>
                                 <Input type="number" value={form.angle_degree} onChange={setField('angle_degree')} className="h-14 rounded-2xl bg-slate-50/50 border-slate-100 px-6 font-semibold focus:bg-white" />
+                            </div>
+                            <div className="md:col-span-2">
+                                <AlignmentVendorSelect
+                                    value={form.alignment_vendor_id}
+                                    onChange={(vendorId) =>
+                                        setForm((current) => ({ ...current, alignment_vendor_id: vendorId }))
+                                    }
+                                />
                             </div>
                         </div>
                     </div>

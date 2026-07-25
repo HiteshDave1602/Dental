@@ -8,7 +8,7 @@ import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
 import AutoFixHighIcon from '@mui/icons-material/AutoFixHigh';
-import { listCompanyVendors } from '../../Script/api';
+import { listCompanyVendors, extractErrorMessage } from '../../Script/api';
 
 export default function UploadForm({ onSubmit, isSubmitting }) {
   const [sceneFile, setSceneFile] = useState(null);
@@ -37,7 +37,7 @@ export default function UploadForm({ onSubmit, isSubmitting }) {
       })
       .catch((e) => {
         if (cancelled) return;
-        setVendorsError(e.message || 'Failed to load company presets.');
+        setVendorsError(extractErrorMessage(e, 'Failed to load company presets.'));
       })
       .finally(() => {
         if (!cancelled) setVendorsLoading(false);

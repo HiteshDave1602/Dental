@@ -3,6 +3,7 @@ import { X, FileUp, File } from 'lucide-react';
 import Button from '../ui/Button';
 import Input from '../ui/Input';
 import api, { extractErrorMessage } from '../../Script/api';
+import AlignmentVendorSelect from '../AlignmentVendorSelect';
 
 const AddLibraryModal = ({ isOpen, onClose, onSuccess }) => {
     const [scanBodyFile, setScanBodyFile] = useState(null);
@@ -14,6 +15,7 @@ const AddLibraryModal = ({ isOpen, onClose, onSuccess }) => {
         tolerance_degree: '',
         angle_degree: '',
         manufacturer_id: '',
+        alignment_vendor_id: '',
     });
     const [isSaving, setIsSaving] = useState(false);
     const [error, setError] = useState('');
@@ -59,6 +61,7 @@ const AddLibraryModal = ({ isOpen, onClose, onSuccess }) => {
                 tolerance_degree: '',
                 angle_degree: '',
                 manufacturer_id: '',
+                alignment_vendor_id: '',
             });
             setScanBodyFile(null);
             setAnalogFile(null);
@@ -140,6 +143,13 @@ const AddLibraryModal = ({ isOpen, onClose, onSuccess }) => {
                             />
                         </div>
                     </div>
+
+                    <AlignmentVendorSelect
+                        value={formData.alignment_vendor_id}
+                        onChange={(vendorId) =>
+                            setFormData((current) => ({ ...current, alignment_vendor_id: vendorId }))
+                        }
+                    />
 
                     <div className="space-y-2.5">
                         <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Scan Body File (.STL / .OBJ)</label>

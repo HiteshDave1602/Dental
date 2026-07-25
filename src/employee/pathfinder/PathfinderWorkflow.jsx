@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect } from 'react';
 import {
   createJob, getJob, calculateAngles, placeAngleCorrectors, searchAroundPoint,
   deleteInstance, rotateAnalog, setInstanceVendor, listCompanyVendors,
+  extractErrorMessage,
 } from '../../Script/api';
 import { useJobWebSocket } from './useJobWebSocket';
 import {
@@ -109,7 +110,10 @@ function PathfinderApp() {
       const res = await createJob(scene, vendorIds);
       setJobId(res.job_id);
     } catch (err) {
-      setError(err.message || 'Failed to create job');
+      // extractErrorMessage, not err.message: axios rejects with a generic
+      // "Request failed with status code 400", which hides the backend's
+      // actual explanation (e.g. which library needs an alignment vendor).
+      setError(extractErrorMessage(err, 'Failed to create job'));
     } finally {
       setIsSubmitting(false);
     }
@@ -145,7 +149,7 @@ function PathfinderApp() {
       if (cancelled) return;
       setJob(prev => (prev ? { ...prev, calculateAngles: result } : prev));
     } catch (e) {
-      if (!cancelled) setError(e.message || 'Failed to calculate insertion angles');
+      if (!cancelled) setError(extractErrorMessage(e, 'Failed to calculate insertion angles'));
     } finally {
       if (!cancelled) setIsCalculatingAngles(false);
     }
@@ -166,7 +170,7 @@ function PathfinderApp() {
       if (cancelled) return;
       setJob(prev => (prev ? { ...prev, placeCorrectors: result } : prev));
     } catch (e) {
-      if (!cancelled) setError(e.message || 'Failed to place angle correctors');
+      if (!cancelled) setError(extractErrorMessage(e, 'Failed to place angle correctors'));
     } finally {
       if (!cancelled) setIsPlacingCorrectors(false);
     }
@@ -216,7 +220,7 @@ function PathfinderApp() {
         setSearchFailureReason(result.reason || 'No instance found at that location.');
       }
     } catch (e) {
-      setError(e.message || 'Targeted search failed');
+      setError(extractErrorMessage(e, 'Targeted search failed'));
     } finally {
       setIsSearching(false);
     }
@@ -236,7 +240,7 @@ function PathfinderApp() {
         return rest;
       });
     } catch (e) {
-      setError(e.message || 'Delete instance failed');
+      setError(extractErrorMessage(e, 'Delete instance failed'));
     } finally {
       setIsDeleting(false);
     }
@@ -263,7 +267,7 @@ function PathfinderApp() {
         placeCorrectors: prev?.placeCorrectors ?? null,
       }));
     } catch (e) {
-      setError(e.message || 'Vendor reassignment failed');
+      setError(extractErrorMessage(e, 'Scan-body replacement failed'));
     }
   }, [jobId]);
 
