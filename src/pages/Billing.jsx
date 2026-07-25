@@ -1,261 +1,191 @@
-import React, { useState } from 'react';
-import {
-    Download,
-    Plus,
-    Search,
-    TrendingUp,
-    Clock,
-    Activity,
-    FileText,
-    MoreHorizontal,
-    ChevronLeft,
-    ChevronRight,
-    Calendar,
-    Filter,
-    RefreshCw,
-    Waypoints
-} from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Search, TrendingUp, Waypoints } from 'lucide-react';
 import { cn } from '../utils/utils';
-import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
+import api, { extractErrorMessage } from '../Script/api';
 
+const STATUS_CLASS = {
+    active: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    pending: 'bg-amber-50 text-amber-700 border-amber-200',
+    paused: 'bg-slate-100 text-slate-600 border-slate-200',
+    cancelled: 'bg-rose-50 text-rose-700 border-rose-200',
+    expired: 'bg-rose-50 text-rose-700 border-rose-200',
+};
+
+const formatDate = (value) => {
+    if (!value) return '—';
+    const d = new Date(value);
+    return Number.isNaN(d.getTime()) ? '—' : d.toLocaleDateString();
+};
+
+/**
+ * Subscriptions, from the API.
+ *
+ * This page previously rendered a hardcoded array — invented revenue figures
+ * and made-up clinician names ("Dr. Sarah Smith", "$128,450.00") shown as
+ * though they were real records. In an admin panel for a medical product that
+ * is worse than an empty page, so it now reports only what the backend has,
+ * and says plainly when there is nothing.
+ */
 const Billing = () => {
     const [searchTerm, setSearchTerm] = useState('');
+    const [subscriptions, setSubscriptions] = useState([]);
+    const [plans, setPlans] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
+
+    useEffect(() => {
+        let cancelled = false;
+        (async () => {
+            try {
+                const [subsRes, plansRes] = await Promise.all([
+                    api.subscriptions.list({ page: 1, size: 100 }),
+                    api.plans.list().catch(() => ({ data: [] })),
+                ]);
+                if (cancelled) return;
+                const body = subsRes.data ?? {};
+                setSubscriptions(body.items ?? body.data ?? []);
+                const planBody = plansRes.data ?? {};
+                setPlans(planBody.items ?? planBody.data ?? (Array.isArray(planBody) ? planBody : []));
+            } catch (err) {
+                if (!cancelled) setError(extractErrorMessage(err, 'Failed to load subscriptions.'));
+            } finally {
+                if (!cancelled) setLoading(false);
+            }
+        })();
+        return () => { cancelled = true; };
+    }, []);
+
+    const planById = useMemo(
+        () => Object.fromEntries(plans.map((p) => [String(p.id), p])),
+        [plans],
+    );
+
+    const activeCount = subscriptions.filter((s) => s.status === 'active').length;
+
+    // Monthly recurring revenue from active subscriptions, priced from the
+    // plans the subscriptions actually reference.
+    const mrr = subscriptions
+        .filter((s) => s.status === 'active')
+        .reduce((sum, s) => sum + Number(planById[String(s.plan_id)]?.price_rupee ?? 0), 0);
+
+    const filtered = subscriptions.filter((s) => {
+        if (!searchTerm) return true;
+        const needle = searchTerm.toLowerCase();
+        const plan = planById[String(s.plan_id)]?.name ?? '';
+        return String(s.user_id).toLowerCase().includes(needle)
+            || plan.toLowerCase().includes(needle)
+            || String(s.status).toLowerCase().includes(needle);
+    });
 
     const stats = [
         {
-            title: 'Total Revenue',
-            value: '$128,450.00',
-            trend: '12% from last month',
-            trendType: 'up',
+            title: 'Monthly Recurring Revenue',
+            value: mrr ? `₹${mrr.toLocaleString()}` : '—',
+            trend: `${activeCount} active subscription${activeCount === 1 ? '' : 's'}`,
             icon: TrendingUp,
-            iconClass: 'bg-[#eefcfb] text-[#0d9488]'
+            iconClass: 'bg-[#eefcfb] text-[#0d9488]',
         },
         {
-            title: 'Active Subscriptions',
-            value: '842',
-            trend: '3% growth rate',
-            trendType: 'up',
+            title: 'Subscriptions',
+            value: String(subscriptions.length),
+            trend: `${plans.length} plan${plans.length === 1 ? '' : 's'} configured`,
             icon: Waypoints,
-            iconClass: 'bg-indigo-50 text-indigo-500'
-        }
-    ];
-
-    const transactions = [
-        {
-            id: 1,
-            user: 'Dr. Sarah Smith',
-            email: 'sarah.smith@practice.com',
-            amount: '$1,250.00',
-            date: 'Oct 24, 2023, 10:30 AM',
-            status: 'Paid',
-            avatar: 'SS'
+            iconClass: 'bg-indigo-50 text-indigo-500',
         },
-        {
-            id: 2,
-            user: 'Central General Hospital',
-            type: 'Enterprise License',
-            amount: '$8,400.00',
-            date: 'Oct 23, 2023, 02:15 PM',
-            status: 'Pending',
-            avatar: 'CG'
-        },
-        {
-            id: 3,
-            user: 'Linda Zhao',
-            email: 'linda.zhao@care.org',
-            amount: '$450.00',
-            date: 'Oct 22, 2023, 09:45 AM',
-            status: 'Paid',
-            avatar: 'LZ'
-        },
-        {
-            id: 4,
-            user: 'Dr. James Wilson',
-            email: 'j.wilson@ortho.com',
-            amount: '$1,250.00',
-            date: 'Oct 21, 2023, 04:20 PM',
-            status: 'Failed',
-            avatar: 'JW'
-        },
-        {
-            id: 5,
-            user: 'Riverside Clinic',
-            type: 'Professional Plan',
-            amount: '$2,100.00',
-            date: 'Oct 20, 2023, 11:00 AM',
-            status: 'Paid',
-            avatar: 'RC'
-        }
     ];
 
     return (
-        <div className="p-6 lg:p-10 max-w-[1600px] mx-auto overflow-y-auto h-full scrollbar-hidden">
-            {/* Page Header */}
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-10">
-                <div>
-                    <h1 className="text-2xl lg:text-[32px] font-bold text-slate-900 tracking-tight leading-none mb-2">Billing & Transactions</h1>
-                    <p className="text-slate-500 font-medium text-sm lg:text-base">Manage practice revenue, invoices, and insurance claims.</p>
-                </div>
-
-                <div className="flex items-center gap-3">
-                    <button className="flex items-center gap-2 px-4 h-11 bg-white border border-slate-200 rounded-xl text-slate-700 font-bold text-sm shadow-sm hover:bg-slate-50 transition-all">
-                        <Download size={18} className="text-slate-400" />
-                        <span>Export CSV</span>
-                    </button>
-                    <Button className="h-11 px-6 bg-[#0d9488] hover:bg-[#0c857a] text-white rounded-xl font-bold flex items-center gap-2 shadow-lg shadow-teal-500/20 active:scale-95 transition-all text-sm">
-                        <Plus size={18} />
-                        New Invoice
-                    </Button>
-                </div>
+        <div className="space-y-6">
+            <div>
+                <h1 className="text-2xl lg:text-[32px] font-bold text-slate-900 tracking-tight leading-none mb-2">
+                    Billing &amp; Subscriptions
+                </h1>
+                <p className="text-sm text-slate-400">Subscription records and plan revenue.</p>
             </div>
 
-            {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
-                {stats.map((stat, idx) => (
-                    <div key={idx} className="bg-white p-8 rounded-[24px] shadow-xl shadow-slate-200/40 border border-slate-50 group transition-all duration-300">
-                        <div className="flex justify-between items-start mb-6">
-                            <span className="text-[15px] font-bold text-slate-400">{stat.title}</span>
-                            <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110 shadow-sm", stat.iconClass)}>
+            {error && (
+                <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                    {error}
+                </div>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {stats.map((stat) => (
+                    <div key={stat.title} className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm">
+                        <div className="flex items-start justify-between">
+                            <div>
+                                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">{stat.title}</p>
+                                <p className="text-2xl font-bold text-slate-900 mt-2">{loading ? '…' : stat.value}</p>
+                                <p className="text-xs text-slate-400 mt-1">{loading ? '' : stat.trend}</p>
+                            </div>
+                            <div className={cn('w-10 h-10 rounded-xl flex items-center justify-center', stat.iconClass)}>
                                 <stat.icon size={20} />
                             </div>
                         </div>
-                        <h2 className="text-2xl lg:text-[32px] font-black text-slate-900 mb-2">{stat.value}</h2>
-                        <p className={cn(
-                            "text-sm font-bold flex items-center gap-1",
-                            stat.trendType === 'up' ? "text-emerald-500" : "text-slate-400"
-                        )}>
-                            {stat.trendType === 'up' && <TrendingUp size={14} />}
-                            {stat.trend}
-                        </p>
                     </div>
                 ))}
             </div>
 
-            {/* Filter Bar */}
-            <div className="bg-white p-6 rounded-[24px] shadow-xl shadow-slate-200/40 border border-slate-100 flex flex-col md:flex-row items-center gap-4 mb-8">
-                <div className="flex flex-1 items-center gap-3 w-full">
-                    <div className="relative group flex-1 max-w-sm">
-                        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#0d9488] transition-colors">
-                            <Calendar size={18} />
-                        </div>
-                        <select className="w-full h-12 bg-slate-50/50 border border-slate-200 rounded-xl pl-11 pr-5 text-slate-900 font-bold text-sm focus:bg-white focus:ring-4 focus:ring-[#0d9488]/5 focus:border-[#0d9488] transition-all appearance-none cursor-pointer">
-                            <option>Last 30 Days</option>
-                            <option>Last 90 Days</option>
-                            <option>Year to Date</option>
-                        </select>
-                    </div>
-                    <div className="relative group flex-1 max-w-sm">
-                        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#0d9488] transition-colors">
-                            <Filter size={18} />
-                        </div>
-                        <select className="w-full h-12 bg-slate-50/50 border border-slate-200 rounded-xl pl-11 pr-5 text-slate-900 font-bold text-sm focus:bg-white focus:ring-4 focus:ring-[#0d9488]/5 focus:border-[#0d9488] transition-all appearance-none cursor-pointer">
-                            <option>All Plans</option>
-                            <option>Basic Plan</option>
-                            <option>Professional Plan</option>
-                            <option>Enterprise License</option>
-                        </select>
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+                <div className="p-5 border-b border-slate-50">
+                    <div className="relative max-w-sm">
+                        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                        <Input
+                            placeholder="Search by plan, status or user id…"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="h-10 pl-9 bg-white border-slate-200 rounded-lg text-sm"
+                        />
                     </div>
                 </div>
 
-                <div className="relative group w-full md:w-80">
-                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#0d9488] transition-colors">
-                        <Search size={18} />
-                    </div>
-                    <input
-                        type="text"
-                        placeholder="Search transactions..."
-                        className="w-full h-12 bg-slate-50/50 border border-slate-200 rounded-xl pl-11 pr-5 text-slate-900 font-bold text-sm focus:bg-white focus:ring-4 focus:ring-[#0d9488]/5 focus:border-[#0d9488] transition-all outline-none"
-                    />
-                </div>
-            </div>
-
-            {/* Transactions Table */}
-            <div className="bg-white rounded-[24px] shadow-xl shadow-slate-200/40 border border-slate-50 overflow-hidden mb-8">
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left min-w-[900px]">
-                        <thead>
-                            <tr className="bg-slate-50/50 border-b border-slate-50 text-[11px] font-bold text-slate-400 uppercase tracking-widest">
-                                <th className="px-8 py-5">User / Entity</th>
-                                <th className="px-8 py-5">Amount</th>
-                                <th className="px-8 py-5">Date</th>
-                                <th className="px-8 py-5 text-center">Status</th>
-                                <th className="px-8 py-5 text-right">Invoice</th>
+                {loading ? (
+                    <p className="p-8 text-center text-sm text-slate-400">Loading subscriptions…</p>
+                ) : filtered.length === 0 ? (
+                    <p className="p-8 text-center text-sm text-slate-400">
+                        {subscriptions.length === 0
+                            ? 'No subscriptions yet.'
+                            : 'No subscriptions match that search.'}
+                    </p>
+                ) : (
+                    <table className="w-full">
+                        <thead className="text-left text-[11px] font-bold text-slate-400 uppercase tracking-widest">
+                            <tr className="border-b border-slate-50">
+                                <th className="p-4">Plan</th>
+                                <th className="p-4">User</th>
+                                <th className="p-4">Price</th>
+                                <th className="p-4">Started</th>
+                                <th className="p-4">Ends</th>
+                                <th className="p-4">Status</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-50">
-                            {transactions.map((t) => (
-                                <tr key={t.id} className="group hover:bg-slate-50/50 transition-all duration-300">
-                                    <td className="px-8 py-6">
-                                        <div className="flex items-center gap-4">
-                                            <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-500 border border-white shadow-sm flex-shrink-0">
-                                                {t.avatar}
-                                            </div>
-                                            <div className="min-w-0">
-                                                <p className="font-bold text-slate-900 leading-none truncate">{t.user}</p>
-                                                <p className="text-[11px] font-semibold text-slate-400 mt-1.5 truncate">{t.email || t.type}</p>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td className="px-8 py-6">
-                                        <span className="text-base font-black text-slate-900">{t.amount}</span>
-                                    </td>
-                                    <td className="px-8 py-6">
-                                        <span className="text-[13px] font-bold text-slate-500">{t.date}</span>
-                                    </td>
-                                    <td className="px-8 py-6">
-                                        <div className="flex justify-center">
+                        <tbody>
+                            {filtered.map((s) => {
+                                const plan = planById[String(s.plan_id)];
+                                return (
+                                    <tr key={s.id} className="border-b border-slate-50 last:border-0 hover:bg-slate-50/50">
+                                        <td className="p-4 text-sm font-semibold text-slate-700">{plan?.name ?? '—'}</td>
+                                        <td className="p-4 text-xs text-slate-500 font-mono">{String(s.user_id).slice(0, 8)}…</td>
+                                        <td className="p-4 text-sm text-slate-700">
+                                            {plan?.price_rupee != null ? `₹${Number(plan.price_rupee).toLocaleString()}` : '—'}
+                                        </td>
+                                        <td className="p-4 text-sm text-slate-500">{formatDate(s.start_date)}</td>
+                                        <td className="p-4 text-sm text-slate-500">{formatDate(s.end_date)}</td>
+                                        <td className="p-4">
                                             <span className={cn(
-                                                "text-[10px] px-3 py-1.5 rounded-lg font-black tracking-widest whitespace-nowrap",
-                                                t.status === 'Paid' ? "bg-emerald-50 text-emerald-600" :
-                                                    t.status === 'Pending' ? "bg-amber-50 text-amber-600" :
-                                                        "bg-rose-50 text-rose-600"
+                                                'text-xs px-2 py-1 rounded-full border font-semibold',
+                                                STATUS_CLASS[s.status] || 'bg-slate-100 text-slate-600 border-slate-200',
                                             )}>
-                                                {t.status.toUpperCase()}
+                                                {s.status}
                                             </span>
-                                        </div>
-                                    </td>
-                                    <td className="px-8 py-6 text-right">
-                                        {t.status === 'Failed' ? (
-                                            <button className="p-2 text-slate-400 hover:text-emerald-500 hover:bg-emerald-50 rounded-lg transition-all">
-                                                <RefreshCw size={20} />
-                                            </button>
-                                        ) : (
-                                            <button className="p-2 text-slate-400 hover:text-[#0d9488] hover:bg-teal-50 rounded-lg transition-all">
-                                                <Download size={20} />
-                                            </button>
-                                        )}
-                                    </td>
-                                </tr>
-                            ))}
+                                        </td>
+                                    </tr>
+                                );
+                            })}
                         </tbody>
                     </table>
-                </div>
-
-                {/* Table Footer / Pagination */}
-                <div className="px-8 py-6 flex flex-col sm:flex-row items-center justify-between gap-6 border-t border-slate-50">
-                    <p className="text-sm font-bold text-slate-400">
-                        Showing 1 to 5 of 842 entries
-                    </p>
-                    <div className="flex items-center gap-2">
-                        <button className="w-10 h-10 flex items-center justify-center rounded-xl bg-white border border-slate-100 text-slate-300 hover:bg-slate-50 transition-all">
-                            <ChevronLeft size={20} />
-                        </button>
-                        <button className="w-10 h-10 flex items-center justify-center rounded-xl bg-[#eefcfb] text-[#0d9488] font-black text-sm shadow-sm">
-                            1
-                        </button>
-                        <button className="w-10 h-10 flex items-center justify-center rounded-xl bg-white border border-slate-100 text-slate-500 font-bold text-sm hover:bg-slate-50 transition-all">
-                            2
-                        </button>
-                        <button className="w-10 h-10 flex items-center justify-center rounded-xl bg-white border border-slate-100 text-slate-500 font-bold text-sm hover:bg-slate-50 transition-all">
-                            3
-                        </button>
-                        <span className="text-slate-400 px-1 font-bold">...</span>
-                        <button className="w-10 h-10 flex items-center justify-center rounded-xl bg-white border border-slate-100 text-slate-300 hover:bg-slate-50 transition-all">
-                            <ChevronRight size={20} />
-                        </button>
-                    </div>
-                </div>
+                )}
             </div>
         </div>
     );

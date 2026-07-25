@@ -227,8 +227,11 @@ export default function ResultsDisplay({
               </Typography>
             </Box>
 
+            {/* One tile, not two. The second showed a hardcoded "10.2s"
+                processing time — the alignment service does not report timing,
+                so there was no real value to put there. */}
             <Grid container spacing={{ xs: 1.5, sm: 2 }}>
-              <Grid size={{ xs: 12, sm: 6 }}>
+              <Grid size={{ xs: 12 }}>
                 <Paper
                   elevation={0}
                   sx={{
@@ -242,29 +245,7 @@ export default function ResultsDisplay({
                     {job.summary.instances.length}
                   </Typography>
                   <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
-                    Alignment Matches Found
-                  </Typography>
-                </Paper>
-              </Grid>
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <Paper
-                  elevation={0}
-                  sx={{
-                    p: { xs: 1.5, sm: 2 },
-                    bgcolor: 'background.default',
-                    borderRadius: 2,
-                    textAlign: 'center',
-                  }}
-                >
-                  <Stack direction="row" spacing={1} alignItems="center" justifyContent="center">
-                    <SpeedIcon color="primary" sx={{ fontSize: { xs: 24, sm: 28 } }} />
-                    <Typography variant="h3" color="primary" sx={{ fontWeight: 700, fontSize: { xs: '2rem', sm: '3rem' } }}>
-                      {/* {job.summary.total_time_sec.toFixed(1)}s */}
-                      10.2s
-                    </Typography>
-                  </Stack>
-                  <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
-                    Processing Time
+                    Implants Detected
                   </Typography>
                 </Paper>
               </Grid>

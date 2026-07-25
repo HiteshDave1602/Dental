@@ -17,7 +17,10 @@ import EmployeeSettings from './employee/pages/EmployeeSettings';
 
 const Login = lazy(() => import('./pages/Login'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
-const ToleranceConfig = lazy(() => import('./pages/ToleranceConfig'));
+// ToleranceConfig removed: a static page with hardcoded vendor names, a
+// "± %" input (tolerance is measured in degrees), no state and a Save button
+// with no handler. Tolerance is configured per implant library, in degrees,
+// on the library form — this duplicated that concept in the wrong unit.
 const UserManagement = lazy(() => import('./pages/UserManagement'));
 const Billing = lazy(() => import('./pages/Billing'));
 const UpdateLibrary = lazy(() => import('./pages/UpdateLibrary'));
@@ -53,7 +56,6 @@ const AdminAppRouter = () => {
               <Route path="payments" element={<Billing />} />
               <Route path="plans" element={<SubscriptionPlans />} />
               <Route path="settings" element={<AccountSettings />} />
-              <Route path="settings/tolerance" element={<ToleranceConfig />} />
             </Route>
             <Route path="/login" element={<Navigate to="/" replace />} />
             <Route path="*" element={<Navigate to="/" replace />} />

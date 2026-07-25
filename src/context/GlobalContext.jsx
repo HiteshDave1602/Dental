@@ -2,19 +2,14 @@ import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 
 const GlobalContext = createContext();
 
+// No placeholder identity. This returned a fictional "Dr. Jane Smith / Main
+// Dentist" when logged out, which rendered briefly on load and in any state
+// where the real profile had not arrived yet.
 const getStoredAuth = () => {
     const token = sessionStorage.getItem('token');
-
-    if (!token) {
-        return {
-            auth: { isAuthenticated: false, token: null },
-            user: { name: 'Dr. Jane Smith', role: 'Main Dentist' },
-        };
-    }
-
     return {
-        auth: { isAuthenticated: true, token },
-        user: { name: 'Admin User', role: 'System Administrator' },
+        auth: { isAuthenticated: Boolean(token), token: token || null },
+        user: { name: '', role: '' },
     };
 };
 
@@ -22,11 +17,14 @@ export const GlobalProvider = ({ children }) => {
     const storedState = getStoredAuth();
     const [user, setUser] = useState(storedState.user);
     const [auth, setAuth] = useState(storedState.auth);
+    // Zeroed, not invented. These were seeded with realistic-looking figures
+    // (1250 patients, $4,250 revenue) that displayed as though they were this
+    // deployment's real numbers until — or unless — an API call replaced them.
     const [dashboardStats, setDashboardStats] = useState({
-        totalPatients: 1250,
-        appointmentsToday: 18,
-        revenue: '$4,250',
-        newInquiries: 5,
+        totalPatients: 0,
+        appointmentsToday: 0,
+        revenue: null,
+        newInquiries: 0,
     });
 
     useEffect(() => {

@@ -261,6 +261,10 @@ const api = {
         // rather than linked to directly.
         downloadAsset: async (libraryId, assetId) =>
             apiClient.get(`/admin/libraries/${libraryId}/assets/${assetId}`, { responseType: 'blob' }),
+        // Retires a library from new selections. Rows are kept, so cases that
+        // already reference it are unaffected.
+        setArchived: async (libraryId, isArchived) =>
+            apiService.patch(`/admin/libraries/${libraryId}/archive`, { is_archived: isArchived }),
     },
 
     all_libraries: {

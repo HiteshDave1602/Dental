@@ -61,6 +61,23 @@ const UpdateLibrary = () => {
 
     const setField = (key) => (e) => setForm((current) => ({ ...current, [key]: e.target.value }));
 
+    const [archiving, setArchiving] = useState(false);
+
+    const handleToggleArchive = async () => {
+        const next = !library.is_archived;
+        if (next && !window.confirm('Archive this library? It will no longer be selectable for new cases.')) return;
+        setArchiving(true);
+        try {
+            await api.libraries.setArchived(id, next);
+            setLibrary((current) => ({ ...current, is_archived: next }));
+            notifySuccess(next ? 'Library archived.' : 'Library restored.');
+        } catch (err) {
+            notifyError(extractErrorMessage(err, 'Failed to update the library.'));
+        } finally {
+            setArchiving(false);
+        }
+    };
+
     const handleDownloadAsset = async (asset) => {
         try {
             const res = await api.libraries.downloadAsset(id, asset.id);
@@ -282,11 +299,16 @@ const UpdateLibrary = () => {
                     <div className="bg-rose-50/30 rounded-[32px] p-8 shadow-sm border border-rose-100">
                         <Button
                             variant="ghost"
-                            className="w-full h-14 bg-white hover:bg-rose-50 text-rose-600 font-black text-sm lg:text-base border border-rose-100 shadow-sm rounded-2xl flex items-center justify-center gap-3 transition-all"
+                            onClick={handleToggleArchive}
+                            disabled={archiving}
+                            className="w-full h-14 bg-white hover:bg-rose-50 text-rose-600 font-black text-sm lg:text-base border border-rose-100 shadow-sm rounded-2xl flex items-center justify-center gap-3 transition-all disabled:opacity-60"
                         >
                             <Trash2 size={20} />
-                            Archive Library
+                            {library.is_archived ? 'Restore Library' : 'Archive Library'}
                         </Button>
+                        <p className="text-[11px] text-slate-400 mt-3 text-center">
+                            Archiving hides this library from new case assignments. Existing cases keep it.
+                        </p>
                     </div>
                 </div>
             </div>
