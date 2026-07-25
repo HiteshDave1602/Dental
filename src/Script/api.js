@@ -52,14 +52,23 @@ apiClient.interceptors.request.use(
     (error) => Promise.reject(error)
 );
 
+// A 401 means the session is gone, so clear it and send the user to login.
+// Previously this only showed a toast, leaving them on an authenticated-looking
+// shell where every subsequent request failed.
+const handleUnauthorized = (tokenKey, loginPath) => (error) => {
+    if (error.response?.status === 401) {
+        sessionStorage.removeItem(tokenKey);
+        notifyError('Session expired. Please login again.');
+        if (!window.location.pathname.startsWith(loginPath)) {
+            window.location.assign(loginPath);
+        }
+    }
+    return Promise.reject(error);
+};
+
 apiClient.interceptors.response.use(
     (response) => response,
-    (error) => {
-        if (error.response?.status === 401) {
-            notifyError('Session expired. Please login again.');
-        }
-        return Promise.reject(error);
-    }
+    handleUnauthorized('token', '/login')
 );
 
 const buildFormData = (payload) => {
@@ -125,12 +134,7 @@ employeeClient.interceptors.request.use(
 
 employeeClient.interceptors.response.use(
     (response) => response,
-    (error) => {
-        if (error.response?.status === 401) {
-            notifyError('Session expired. Please login again.');
-        }
-        return Promise.reject(error);
-    }
+    handleUnauthorized(EMPLOYEE_TOKEN_KEY, '/login')
 );
 
 export const employeeService = {
@@ -285,6 +289,11 @@ const api = {
         // aligned, so the library form selects from this list.
         // Returns { vendors: [{id, name, description}], available }.
         alignmentVendors: async () => apiService.get('/admin/alignment-vendors'),
+        // Assets are no longer served from a public static path, so they have
+        // to be fetched with the admin token and saved from the response body
+        // rather than linked to directly.
+        downloadAsset: async (libraryId, assetId) =>
+            apiClient.get(`/admin/libraries/${libraryId}/assets/${assetId}`, { responseType: 'blob' }),
     },
 
     all_libraries: {

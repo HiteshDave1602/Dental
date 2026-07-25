@@ -26,7 +26,9 @@ const formatSize = (bytes) => {
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 };
 
-const assetUrl = (filePath) => (filePath?.startsWith('http') ? filePath : `${RESOLVED_BASE_URL}${filePath}`);
+// Library assets used to be linked straight to a public /uploads path. They
+// are now behind an admin-only route, so they are fetched with the token and
+// saved from the response instead of being opened as a URL.
 
 const UpdateLibrary = () => {
     const { id } = useParams();
@@ -58,6 +60,20 @@ const UpdateLibrary = () => {
     }, [library]);
 
     const setField = (key) => (e) => setForm((current) => ({ ...current, [key]: e.target.value }));
+
+    const handleDownloadAsset = async (asset) => {
+        try {
+            const res = await api.libraries.downloadAsset(id, asset.id);
+            const url = URL.createObjectURL(res.data);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = asset.file_name || 'asset';
+            link.click();
+            URL.revokeObjectURL(url);
+        } catch (err) {
+            notifyError(extractErrorMessage(err, 'Failed to download asset.'));
+        }
+    };
 
     const handleSave = async () => {
         setSaving(true);
@@ -234,15 +250,14 @@ const UpdateLibrary = () => {
                                                     </p>
                                                 </div>
                                             </div>
-                                            <a
-                                                href={assetUrl(asset.file_path)}
-                                                target="_blank"
-                                                rel="noreferrer"
+                                            <button
+                                                type="button"
+                                                onClick={() => handleDownloadAsset(asset)}
                                                 className="text-clinical-teal font-black text-[12px] flex items-center gap-2 hover:bg-white px-4 py-2 rounded-xl transition-all flex-shrink-0"
                                             >
                                                 <Download size={16} />
-                                                View
-                                            </a>
+                                                Download
+                                            </button>
                                         </div>
                                     </div>
                                 );
