@@ -6,7 +6,7 @@ import { PLYLoader } from 'three/examples/jsm/loaders/PLYLoader.js';
 import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js';
 import { Box, Typography, CircularProgress, Stack, Paper, ToggleButton, ToggleButtonGroup } from '@mui/material';
 import { ErrorBoundary } from './ErrorBoundary';
-import { RESOLVED_BASE_URL } from '../../Script/api';
+import { assetUrl, assetUrlWithVersion } from '../../Script/api';
 
 // Color used to highlight a mesh on hover (sidebar row hover or anything else
 // that sets `isHighlighted={true}`). Change this constant to swap the hover
@@ -88,9 +88,11 @@ function Loader() {
 }
 
 export default function Viewer3D({ job, visibleInstances, hoveredInstance, seedPoint, onSeedSelected, analogRotationDrafts = {} }) {
-  // Mesh artifact URLs are served by the alignment backend at RESOLVED_BASE_URL
-  // (ported from the standalone pathfinder app's VITE_API_BASE).
-  const API_BASE = RESOLVED_BASE_URL;
+  // Artifact URLs arrive in two forms and must go through `assetUrl`, never
+  // string concatenation: the composite and per-instance meshes are relative
+  // proxy paths, but `scene` is an absolute signed URL because the compute
+  // service fetches that exact URL too. Prefixing the absolute one produced
+  // `https://api.example.comhttps//api.example.com/...` and killed the viewer.
 
   // Projection mode. Orthographic (parallel) avoids size-with-distance
   // distortion, which is preferable for judging alignment/parallelism;
@@ -104,8 +106,8 @@ export default function Viewer3D({ job, visibleInstances, hoveredInstance, seedP
   // copies of every detected instance baked in, so they'd remain visible
   // even when all instance checkboxes are off.
   const baseScene = job?.artifacts?.scene
-    ? API_BASE + job.artifacts.scene
-    : (job?.artifacts?.composite ? API_BASE + job.artifacts.composite : null);
+    ? assetUrl(job.artifacts.scene)
+    : (job?.artifacts?.composite ? assetUrl(job.artifacts.composite) : null);
 
   if (!baseScene) {
     return (
@@ -289,7 +291,7 @@ export default function Viewer3D({ job, visibleInstances, hoveredInstance, seedP
                 {job?.placeCorrectors?.final_with_correctors_path && visibleInstances['final_with_correctors'] ? (
                   <Mesh
                     key="final-with-correctors"
-                    url={API_BASE + job.placeCorrectors.final_with_correctors_path}
+                    url={assetUrl(job.placeCorrectors.final_with_correctors_path)}
                     color="#ffffff"
                     isVisible={true}
                     isHighlighted={false}
@@ -301,9 +303,9 @@ export default function Viewer3D({ job, visibleInstances, hoveredInstance, seedP
                     // per-instance analog rotation is saved. Sum the rotations so
                     // the URL changes on every save without reloading on
                     // unrelated state changes. (Scan-body swaps don't touch it.)
-                    url={`${API_BASE}${job.calculateAngles.insertion_axis_cube_and_analogs_path}?v=${
+                    url={assetUrlWithVersion(job.calculateAngles.insertion_axis_cube_and_analogs_path, 
                       (job.summary?.instances || []).reduce((s, i) => s + Number(i.analog_z_rotation_deg || 0), 0)
-                    }`}
+                    )}
                     color="#81d4fa"
                     isVisible={true}
                     isHighlighted={false}
@@ -326,8 +328,8 @@ export default function Viewer3D({ job, visibleInstances, hoveredInstance, seedP
                       // (A scan-body swap does NOT rewrite these analog STLs, so
                       // the rotation angle alone keys the cache.)
                       const url = usePure
-                        ? `${API_BASE}${res.mesh_path}?v=${savedDeg}`
-                        : `${API_BASE}${res.mesh_with_scan_body_path}?v=${savedDeg}`;
+                        ? assetUrlWithVersion(res.mesh_path, savedDeg)
+                        : assetUrlWithVersion(res.mesh_with_scan_body_path, savedDeg);
                       // Live preview: while the user drags the rotation slider,
                       // App holds the in-progress draft. Rotate the loaded STL
                       // (baked at savedDeg) by (draft - saved) around the bore
@@ -356,7 +358,7 @@ export default function Viewer3D({ job, visibleInstances, hoveredInstance, seedP
                           {showRotvis && (
                             <Mesh
                               key={`rotvis-${res.instance_index}`}
-                              url={`${API_BASE}${res.mesh_rotation_vis_path}?v=${savedDeg}`}
+                              url={assetUrlWithVersion(res.mesh_rotation_vis_path, savedDeg)}
                               color="#ffd54f"
                               isVisible={visibleInstances[res.instance_index]}
                               isHighlighted={hoveredInstance === res.instance_index}
@@ -368,7 +370,7 @@ export default function Viewer3D({ job, visibleInstances, hoveredInstance, seedP
                     {job.calculateAngles.reference_plane_path && (
                       <Mesh
                         key="reference-plane"
-                        url={API_BASE + job.calculateAngles.reference_plane_path}
+                        url={assetUrl(job.calculateAngles.reference_plane_path)}
                         color="#4fc3f7"
                         isVisible={!!visibleInstances['reference_plane']}
                         isHighlighted={false}
@@ -377,7 +379,7 @@ export default function Viewer3D({ job, visibleInstances, hoveredInstance, seedP
                     {job.calculateAngles.reference_plane_cube_path && (
                       <Mesh
                         key="reference-plane-cube"
-                        url={API_BASE + job.calculateAngles.reference_plane_cube_path}
+                        url={assetUrl(job.calculateAngles.reference_plane_cube_path)}
                         color="#81d4fa"
                         isVisible={!!visibleInstances['reference_plane_cube']}
                         isHighlighted={false}
@@ -386,7 +388,7 @@ export default function Viewer3D({ job, visibleInstances, hoveredInstance, seedP
                     {job.placeCorrectors?.instance_correctors?.map((c) => (
                       <Mesh
                         key={`corrector-${c.instance_index}`}
-                        url={API_BASE + c.mesh_path}
+                        url={assetUrl(c.mesh_path)}
                         color="#66bb6a"
                         isVisible={!!visibleInstances['angle_correctors']}
                         isHighlighted={false}
@@ -396,7 +398,7 @@ export default function Viewer3D({ job, visibleInstances, hoveredInstance, seedP
                       c.head_mesh_path ? (
                         <Mesh
                           key={`corrector-head-${c.instance_index}`}
-                          url={API_BASE + c.head_mesh_path}
+                          url={assetUrl(c.head_mesh_path)}
                           color="#5c9ce6"
                           isVisible={!!visibleInstances['corrector_heads']}
                           isHighlighted={false}
@@ -411,7 +413,7 @@ export default function Viewer3D({ job, visibleInstances, hoveredInstance, seedP
                       // aligned_instance_NN.stl is rewritten in place on a
                       // scan-body swap — the effective scan-body vendor id
                       // busts the loader cache.
-                      url={`${API_BASE}${job.artifacts.instances[i]}?v=${inst.scan_body_vendor_id ?? inst.vendor_id ?? ''}`}
+                      url={assetUrlWithVersion(job.artifacts.instances[i], inst.scan_body_vendor_id ?? inst.vendor_id ?? '')}
                       color="#ff4081"
                       isVisible={visibleInstances[inst.index]}
                       isHighlighted={hoveredInstance === inst.index}

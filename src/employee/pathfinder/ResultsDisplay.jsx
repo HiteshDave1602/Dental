@@ -15,12 +15,13 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import SpeedIcon from '@mui/icons-material/Speed';
 import SearchIcon from '@mui/icons-material/Search';
 import { saveAs } from 'file-saver';
-import { RESOLVED_BASE_URL, extractErrorMessage } from '../../Script/api';
+import { assetUrl, extractErrorMessage } from '../../Script/api';
 
-// Mesh/artifact paths returned by the backend are relative; the alignment
-// backend serves them at RESOLVED_BASE_URL (ported from VITE_API_BASE). Prefix
-// before handing to saveAs so downloads hit the backend, not the SPA origin.
-const fileUrl = (p) => (p ? `${RESOLVED_BASE_URL}${p}` : p);
+// Artifact paths are NOT all relative — `artifacts.scene` is absolute, because
+// the compute service fetches that same signed URL. `assetUrl` prefixes only
+// what needs it; the old unconditional prefix produced a doubled origin that
+// failed to resolve.
+const fileUrl = (p) => assetUrl(p);
 
 // Per-instance z-axis rotation (clocking) control. One angle clocks BOTH analog
 // variants for the instance — analog_instance_NN.stl (pure) and

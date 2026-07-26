@@ -9,6 +9,40 @@ const API_BASE_URL =
 const FALLBACK_BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
 export const RESOLVED_BASE_URL = API_BASE_URL || FALLBACK_BASE_URL;
 
+/**
+ * Resolve a backend-supplied URL against the API origin.
+ *
+ * The alignment payload deliberately mixes both forms, and that is not going to
+ * change: `artifacts.composite` and `artifacts.instances[]` are relative proxy
+ * paths, while `artifacts.scene` is absolute because the compute service has to
+ * fetch the very same signed URL from outside the browser.
+ *
+ * Concatenating the base onto an absolute URL produced
+ * `https://api.example.comhttps//api.example.com/...`, which fails DNS
+ * resolution and crashed the 3D viewer with "Could not load". Anything already
+ * carrying a scheme — or protocol-relative — is returned untouched.
+ */
+export const assetUrl = (path) => {
+    if (!path) return path;
+    if (/^(https?:)?\/\//i.test(path)) return path;
+    return `${RESOLVED_BASE_URL}${path}`;
+};
+
+/**
+ * `assetUrl` plus a cache-busting marker.
+ *
+ * The viewer re-requests a mesh when its rotation or scan body changes, and the
+ * URL is identical each time, so the browser would serve the stale copy. The
+ * separator has to be chosen rather than assumed: a presigned storage URL
+ * already carries `?X-Amz-...`, and a second `?` makes the signature part of
+ * the path, which the store rejects as unsigned.
+ */
+export const assetUrlWithVersion = (path, version) => {
+    const url = assetUrl(path);
+    if (!url || version === undefined || version === null || version === '') return url;
+    return `${url}${url.includes('?') ? '&' : '?'}v=${encodeURIComponent(version)}`;
+};
+
 // Backend error `detail` is inconsistently shaped: a plain string for most
 // validation errors, or a `{code, message}` dict for alignment-job failures
 // (see analysis/alignment routers) — this normalizes both to display text.
