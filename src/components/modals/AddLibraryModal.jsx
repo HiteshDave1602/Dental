@@ -4,11 +4,13 @@ import Button from '../ui/Button';
 import Input from '../ui/Input';
 import api, { extractErrorMessage } from '../../Script/api';
 import AlignmentVendorSelect from '../AlignmentVendorSelect';
+import BundleUpload from '../BundleUpload';
 
 const AddLibraryModal = ({ isOpen, onClose, onSuccess }) => {
-    const [scanBodyFile, setScanBodyFile] = useState(null);
-    const [analogFile, setAnalogFile] = useState(null);
-    const [angleFiles, setAngleFiles] = useState([]);
+    const [bundleFile, setBundleFile] = useState(null);
+    const [bundleStatus, setBundleStatus] = useState('idle');   // idle|uploading|valid|error
+    const [bundleMessage, setBundleMessage] = useState('');
+    const [bundleReport, setBundleReport] = useState(null);
     const [outputFiles, setOutputFiles] = useState([]);
     const [formData, setFormData] = useState({
         company_name: '',
@@ -22,62 +24,90 @@ const AddLibraryModal = ({ isOpen, onClose, onSuccess }) => {
 
     if (!isOpen) return null;
 
+    const resetForm = () => {
+        setFormData({
+            company_name: '',
+            tolerance_degree: '',
+            angle_degree: '',
+            manufacturer_id: '',
+            alignment_vendor_id: '',
+        });
+        setBundleFile(null);
+        setBundleStatus('idle');
+        setBundleMessage('');
+        setBundleReport(null);
+        setOutputFiles([]);
+    };
+
     const handleSave = async () => {
         setError('');
 
-        if (!scanBodyFile || !analogFile || !angleFiles.length) {
-            setError('Scan body, analog and angle files are required.');
+        if (!formData.alignment_vendor_id) {
+            setError('Select an alignment vendor. It must match the id declared inside the bundle.');
+            return;
+        }
+        if (!bundleFile) {
+            setError('A vendor bundle (.zip) is required — without it this library cannot align anything.');
             return;
         }
 
         setIsSaving(true);
 
+        // Two steps, because the bundle is uploaded against an existing
+        // library. If the first succeeds and the second does not, the library
+        // exists but reports alignment_ready: false — visible in the list, and
+        // fixable by uploading a corrected bundle rather than starting over.
+        let libraryId = null;
         try {
             const payload = new FormData();
-
             Object.entries(formData).forEach(([key, value]) => {
                 if (value !== undefined && value !== null && value !== '') {
                     payload.append(key, value);
                 }
             });
 
-            payload.append('scan_body_file', scanBodyFile);
-            payload.append('analog_file', analogFile);
-            payload.append('angle_file', angleFiles[0]);
-
             const response = await api.libraries.create(payload);
+            libraryId = response.data?.id;
+        } catch (err) {
+            setIsSaving(false);
+            setError(extractErrorMessage(err, 'Failed to create library.'));
+            return;
+        }
 
-            // Output files aren't part of the create contract — attach them
-            // afterwards via the per-library assets endpoint.
-            const libraryId = response.data?.id;
+        try {
+            setBundleStatus('uploading');
+            setBundleMessage('');
+            const result = await api.libraries.uploadBundle(libraryId, bundleFile);
+            setBundleStatus('valid');
+            setBundleReport(result.data?.engine_report || result.data || null);
+        } catch (err) {
+            setIsSaving(false);
+            setBundleStatus('error');
+            // Shown verbatim: the alignment service names the missing or
+            // unusable asset, which is the only thing that makes it fixable.
+            setBundleMessage(extractErrorMessage(err, 'The alignment service rejected this bundle.'));
+            setError(
+                'The library was created but its bundle was rejected, so it cannot align yet. ' +
+                'Fix the bundle and upload it again from the library list.'
+            );
+            if (onSuccess) onSuccess({ id: libraryId });
+            return;
+        }
+
+        try {
             if (libraryId && outputFiles.length) {
                 for (const file of outputFiles) {
                     await api.libraries.uploadAsset(libraryId, { file, asset_type: 'output' });
                 }
             }
-
-            setFormData({
-                company_name: '',
-                tolerance_degree: '',
-                angle_degree: '',
-                manufacturer_id: '',
-                alignment_vendor_id: '',
-            });
-            setScanBodyFile(null);
-            setAnalogFile(null);
-            setAngleFiles([]);
-            setOutputFiles([]);
-            setIsSaving(false);
-
-            if (onSuccess) {
-                onSuccess(response.data);
-            }
-
-            onClose();
-        } catch (err) {
-            setIsSaving(false);
-            setError(extractErrorMessage(err, 'Failed to create library.'));
+        } catch {
+            // Supplementary documents only — never block a working library on them.
         }
+
+        resetForm();
+        setIsSaving(false);
+        if (onSuccess) onSuccess({ id: libraryId });
+        onClose();
     };
 
     return (
@@ -151,107 +181,19 @@ const AddLibraryModal = ({ isOpen, onClose, onSuccess }) => {
                         }
                     />
 
-                    <div className="space-y-2.5">
-                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Scan Body File (.STL / .OBJ)</label>
-                        <div className="group relative border-2 border-dashed border-slate-200 hover:border-teal-500/50 rounded-xl p-6 lg:p-8 transition-all cursor-pointer bg-slate-50/30 hover:bg-teal-50/30">
-                            <input
-                                type="file"
-                                accept=".stl,.obj"
-                                className="absolute inset-0 opacity-0 cursor-pointer z-10"
-                                onChange={(e) => setScanBodyFile(e.target.files[0])}
-                            />
-                            {scanBodyFile ? (
-                                <div className="flex flex-col items-center justify-center text-center relative z-20">
-                                    <div className="w-11 h-11 bg-teal-50 rounded-lg shadow-sm border border-teal-100 flex items-center justify-center text-teal-500 mb-3">
-                                        <File size={22} />
-                                    </div>
-                                    <p className="text-sm font-bold text-slate-900 mb-1 truncate max-w-full px-4">{scanBodyFile.name}</p>
-                                    <button
-                                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); setScanBodyFile(null); }}
-                                        className="text-[11px] font-bold text-rose-500 hover:text-rose-600 transition-colors"
-                                    >
-                                        Remove file
-                                    </button>
-                                </div>
-                            ) : (
-                                <div className="flex flex-col items-center justify-center text-center">
-                                    <div className="w-11 h-11 bg-white rounded-lg shadow-sm border border-slate-100 flex items-center justify-center text-slate-400 group-hover:text-teal-500 transition-colors mb-3">
-                                        <File size={22} />
-                                    </div>
-                                    <p className="text-base font-bold text-slate-900 mb-0.5">Click to upload or drag & drop</p>
-                                    <p className="text-[12px] font-semibold text-slate-400">Maximum file size 50MB</p>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-
-                    <div className="space-y-2.5">
-                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Analog File (.STL / .OBJ)</label>
-                        <div className="group relative border-2 border-dashed border-slate-200 hover:border-teal-500/50 rounded-xl p-6 lg:p-8 transition-all cursor-pointer bg-slate-50/30 hover:bg-teal-50/30">
-                            <input
-                                type="file"
-                                accept=".stl,.obj"
-                                className="absolute inset-0 opacity-0 cursor-pointer z-10"
-                                onChange={(e) => setAnalogFile(e.target.files[0])}
-                            />
-                            {analogFile ? (
-                                <div className="flex flex-col items-center justify-center text-center relative z-20">
-                                    <div className="w-11 h-11 bg-teal-50 rounded-lg shadow-sm border border-teal-100 flex items-center justify-center text-teal-500 mb-3">
-                                        <FileUp size={22} />
-                                    </div>
-                                    <p className="text-sm font-bold text-slate-900 mb-1 truncate max-w-full px-4">{analogFile.name}</p>
-                                    <button
-                                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); setAnalogFile(null); }}
-                                        className="text-[11px] font-bold text-rose-500 hover:text-rose-600 transition-colors"
-                                    >
-                                        Remove file
-                                    </button>
-                                </div>
-                            ) : (
-                                <div className="flex flex-col items-center justify-center text-center">
-                                    <div className="w-11 h-11 bg-white rounded-lg shadow-sm border border-slate-100 flex items-center justify-center text-slate-400 group-hover:text-teal-500 transition-colors mb-3">
-                                        <FileUp size={22} />
-                                    </div>
-                                    <p className="text-base font-bold text-slate-900 mb-0.5">Click to upload or drag & drop</p>
-                                    <p className="text-[12px] font-semibold text-slate-400">Maximum file size 50MB</p>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-
-                    <div className="space-y-2.5">
-                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Angle Alignment File (.STL / .OBJ)</label>
-                        <div className="group relative border-2 border-dashed border-slate-200 hover:border-teal-500/50 rounded-xl p-6 lg:p-8 transition-all cursor-pointer bg-slate-50/30 hover:bg-teal-50/30">
-                            <input
-                                type="file"
-                                accept=".stl,.obj"
-                                className="absolute inset-0 opacity-0 cursor-pointer z-10"
-                                onChange={(e) => setAngleFiles(e.target.files[0] ? [e.target.files[0]] : [])}
-                            />
-                            {angleFiles.length ? (
-                                <div className="flex flex-col items-center justify-center text-center relative z-20">
-                                    <div className="w-11 h-11 bg-teal-50 rounded-lg shadow-sm border border-teal-100 flex items-center justify-center text-teal-500 mb-3">
-                                        <FileUp size={22} />
-                                    </div>
-                                    <p className="text-sm font-bold text-slate-900 mb-1 truncate max-w-full px-4">{angleFiles[0]?.name}</p>
-                                    <button
-                                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); setAngleFiles([]); }}
-                                        className="text-[11px] font-bold text-rose-500 hover:text-rose-600 transition-colors"
-                                    >
-                                        Remove file
-                                    </button>
-                                </div>
-                            ) : (
-                                <div className="flex flex-col items-center justify-center text-center">
-                                    <div className="w-11 h-11 bg-white rounded-lg shadow-sm border border-slate-100 flex items-center justify-center text-slate-400 group-hover:text-teal-500 transition-colors mb-3">
-                                        <FileUp size={22} />
-                                    </div>
-                                    <p className="text-base font-bold text-slate-900 mb-0.5">Click to upload or drag & drop</p>
-                                    <p className="text-[12px] font-semibold text-slate-400">Maximum file size 50MB</p>
-                                </div>
-                            )}
-                        </div>
-                    </div>
+                    <BundleUpload
+                        file={bundleFile}
+                        status={bundleStatus}
+                        message={bundleMessage}
+                        report={bundleReport}
+                        disabled={isSaving}
+                        onChange={(file, problem) => {
+                            setBundleFile(file);
+                            setBundleStatus(problem ? 'error' : 'idle');
+                            setBundleMessage(problem || '');
+                            setBundleReport(null);
+                        }}
+                    />
 
                     <div className="space-y-2.5">
                         <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Output File (.PDF / .STL / .OBJ) (Optional)</label>

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Search, Plus, ChevronLeft, ChevronRight, BookOpen, Pencil } from 'lucide-react';
+import { Search, Plus, ChevronLeft, ChevronRight, BookOpen, Pencil, CheckCircle2, AlertTriangle } from 'lucide-react';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import AddLibraryModal from '../components/modals/AddLibraryModal';
@@ -145,6 +145,7 @@ const LibraryManagement = () => {
                                 <th className="px-6 lg:px-8 py-4 lg:py-5 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Manufacturer ID</th>
                                 <th className="px-6 lg:px-8 py-4 lg:py-5 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center">Angle Alignment</th>
                                 <th className="px-6 lg:px-8 py-4 lg:py-5 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center">Tolerance</th>
+                                <th className="px-6 lg:px-8 py-4 lg:py-5 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center">Alignment</th>
                                 <th className="px-6 lg:px-8 py-4 lg:py-5 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-right">Actions</th>
                             </tr>
                         </thead>
@@ -156,12 +157,13 @@ const LibraryManagement = () => {
                                         <td className="px-6 lg:px-8 py-5"><div className="h-4 w-24 bg-slate-100 rounded" /></td>
                                         <td className="px-6 lg:px-8 py-5"><div className="h-4 w-12 bg-slate-100 rounded mx-auto" /></td>
                                         <td className="px-6 lg:px-8 py-5"><div className="h-4 w-12 bg-slate-100 rounded mx-auto" /></td>
+                                        <td className="px-6 lg:px-8 py-5"><div className="h-4 w-16 bg-slate-100 rounded mx-auto" /></td>
                                         <td className="px-6 lg:px-8 py-5"><div className="h-4 w-16 bg-slate-100 rounded ml-auto" /></td>
                                     </tr>
                                 ))
                             ) : libraries.length === 0 ? (
                                 <tr>
-                                    <td colSpan={5} className="px-8 py-16 text-center">
+                                    <td colSpan={6} className="px-8 py-16 text-center">
                                         <div className="flex flex-col items-center gap-3 text-slate-400">
                                             <BookOpen size={32} strokeWidth={1.5} />
                                             <p className="font-bold text-slate-500">No libraries found</p>
@@ -192,6 +194,28 @@ const LibraryManagement = () => {
                                         </td>
                                         <td className="px-6 lg:px-8 py-4 lg:py-5 text-center text-sm font-bold text-slate-600">
                                             {lib.tolerance_degree != null ? `${lib.tolerance_degree}°` : '—'}
+                                        </td>
+                                        <td className="px-6 lg:px-8 py-4 lg:py-5 text-center">
+                                            {/* Whether this library can actually produce an
+                                                alignment job. It used to look configured as soon
+                                                as it had files and a vendor id, while being unable
+                                                to run anything — the failure then surfaced days
+                                                later as a dentist's stuck case. */}
+                                            {lib.alignment_ready ? (
+                                                <span
+                                                    title={lib.bundle_version ? `Bundle ${lib.bundle_version.replace('sha256:', '').slice(0, 12)}…` : 'Ready'}
+                                                    className="inline-flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded-lg font-bold bg-teal-50 text-teal-700"
+                                                >
+                                                    <CheckCircle2 size={12} /> Ready
+                                                </span>
+                                            ) : (
+                                                <span
+                                                    title={lib.alignment_blocked_reason || 'Cannot align yet'}
+                                                    className="inline-flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded-lg font-bold bg-amber-50 text-amber-700"
+                                                >
+                                                    <AlertTriangle size={12} /> Not ready
+                                                </span>
+                                            )}
                                         </td>
                                         <td className="px-6 lg:px-8 py-4 lg:py-5 text-right">
                                             <Link

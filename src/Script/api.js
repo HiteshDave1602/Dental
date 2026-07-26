@@ -251,6 +251,23 @@ const api = {
         create: async (payload) => apiService.postMultipart('/admin/libraries', payload),
         update: async (libraryId, payload) => apiService.putMultipart(`/admin/libraries/${libraryId}`, payload),
         uploadAsset: async (libraryId, payload) => apiService.postMultipart(`/admin/libraries/${libraryId}/assets`, payload),
+        // The vendor bundle: the complete CAD asset set for one implant system
+        // as a single .zip. This is what actually makes a library usable — the
+        // older per-file uploads could never produce a runnable vendor.
+        //
+        // Slow on purpose: the alignment service downloads and unpacks the
+        // archive before answering, so a bundle that cannot work is rejected
+        // here rather than days later through a dentist's stuck case. Allow a
+        // generous timeout and show the returned message, which names the
+        // offending asset.
+        uploadBundle: async (libraryId, file) => {
+            const payload = new FormData();
+            payload.append('file', file);
+            return apiService.postMultipart(`/admin/libraries/${libraryId}/bundle`, payload, {
+                timeout: 180000,
+            });
+        },
+        listBundles: async (libraryId) => apiService.get(`/admin/libraries/${libraryId}/bundles`),
         // Vendors registered on the alignment engine. A library's
         // alignment_vendor_id must be one of these ids or its cases cannot be
         // aligned, so the library form selects from this list.
