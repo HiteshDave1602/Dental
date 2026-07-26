@@ -133,39 +133,19 @@ const EmployeeNewCase = () => {
     if (currentStep === 2) fetchBrands();
   }, [currentStep, fetchBrands]);
 
-  // Rehydrate case + analysis data after a refresh or direct navigation to
-  // Step 3/4 — never re-runs the (backend-synchronous) calculate() call,
-  // only refetches what already exists.
-  useEffect(() => {
-    if (currentStep < 3 || !caseId || analysisResult) return;
-    let cancelled = false;
-
-    (async () => {
-      try {
-        const caseRes = await api.employee.cases.get(caseId);
-        if (!cancelled) setCaseData(caseRes.data?.data || caseRes.data);
-      } catch {
-        // Non-fatal — viewer just won't show the base patient scan
-      }
-
-      try {
-        const res = await api.employee.analysis.results(caseId);
-        if (!cancelled) {
-          setAnalysisResult(res.data?.data || res.data);
-          setSuperimposed(true);
-        }
-      } catch (err) {
-        // 404 just means analysis hasn't been run yet — not an error state
-        if (!cancelled && err?.response?.status !== 404) {
-          notifyError(extractErrorMessage(err, 'Failed to load analysis results'));
-        }
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [currentStep, caseId, analysisResult]);
+  // The step-3 rehydration effect that used to sit here has been removed.
+  //
+  // It fetched the case and `analysis/{id}/results` on every entry to step 3,
+  // but everything it populated (`caseData`, `analysisResult` and the values
+  // derived from them) is read by nothing: step 3 returns early into
+  // PathfinderWorkflow, which loads its own state from the case's alignment job.
+  //
+  // Because analysis results only exist AFTER the review is completed, that
+  // request 404'd every single time a case reached step 3 — a red 404 in the
+  // console and network tab on the normal, healthy path, for data nobody
+  // rendered. The handler swallowed the 404 deliberately, so it was noise rather
+  // than a fault, but noise that looked exactly like a fault while people were
+  // testing.
 
   // Restore persisted patient data on first mount only
   // eslint-disable-next-line react-hooks/exhaustive-deps

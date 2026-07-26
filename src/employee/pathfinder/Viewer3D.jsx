@@ -47,15 +47,24 @@ function buildAxisRotation(start, end, deltaDeg) {
   return { position: [t.x, t.y, t.z], quaternion: [q.x, q.y, q.z, q.w] };
 }
 
-function Mesh({ url, color, isVisible, isHighlighted, opacity: customOpacity, onClick }) {
-  // Pick the loader by extension, ignoring any query string (e.g. `?v=12.5`
-  // cache-busters used when an STL gets rewritten on disk).
+function Mesh({ url, color, isVisible, isHighlighted, opacity: customOpacity, onClick, format }) {
+  // Which parser to use. `format` wins when the server declares it, because the
+  // URL cannot always be trusted: the patient scan is served from
+  // `/user/cases/{id}/scan`, a route with NO file extension, so extension
+  // sniffing fell through to PLY, fed an STL to the wrong parser, and the scan
+  // silently never appeared — while every `..._instance_01.stl` rendered fine.
+  //
+  // Extension sniffing remains the fallback for artifact URLs that do carry
+  // one; the query string is stripped first because of the `?v=` cache-busters.
   const pathname = url.split('?')[0];
-  const loader = pathname.endsWith('.stl') ? STLLoader : PLYLoader;
+  const isStl = format ? format.toLowerCase() === 'stl' : pathname.endsWith('.stl');
+  const loader = isStl ? STLLoader : PLYLoader;
   const geometry = useLoader(loader, url);
 
   const material = useMemo(() => new THREE.MeshStandardMaterial({
-    vertexColors: !pathname.endsWith('.stl'),
+    // STL carries no per-vertex colour. Enabling vertexColors for one renders
+    // it black, so this has to follow the same decision as the loader.
+    vertexColors: !isStl,
     color: isHighlighted ? HOVER_COLOR : color,
     metalness: 0.3,
     roughness: 0.4,
@@ -63,7 +72,7 @@ function Mesh({ url, color, isVisible, isHighlighted, opacity: customOpacity, on
     opacity: customOpacity !== undefined ? customOpacity : (isHighlighted ? 1.0 : 0.85),
     emissive: isHighlighted ? HOVER_COLOR : '#000000',
     emissiveIntensity: isHighlighted ? 0.4 : 0,
-  }), [color, isHighlighted, customOpacity, pathname]);
+  }), [color, isHighlighted, customOpacity, isStl]);
 
   return <mesh geometry={geometry} material={material} visible={isVisible} castShadow receiveShadow onClick={onClick} />;
 }
@@ -105,9 +114,15 @@ export default function Viewer3D({ job, visibleInstances, hoveredInstance, seedP
   // composite would also render the scene, but the composite has painted-blue
   // copies of every detected instance baked in, so they'd remain visible
   // even when all instance checkboxes are off.
-  const baseScene = job?.artifacts?.scene
-    ? assetUrl(job.artifacts.scene)
-    : (job?.artifacts?.composite ? assetUrl(job.artifacts.composite) : null);
+  // URL and format travel together: the scan's format is whatever the dentist
+  // uploaded (declared by the server, since its URL has no extension), while the
+  // composite fallback is always PLY.
+  const base = job?.artifacts?.scene
+    ? { url: assetUrl(job.artifacts.scene), format: job.artifacts.scene_format || null }
+    : (job?.artifacts?.composite
+      ? { url: assetUrl(job.artifacts.composite), format: 'ply' }
+      : null);
+  const baseScene = base?.url ?? null;
 
   if (!baseScene) {
     return (
@@ -269,6 +284,7 @@ export default function Viewer3D({ job, visibleInstances, hoveredInstance, seedP
                 {/* Base scene/denture mesh — also catches clicks for seed-point selection */}
                 <Mesh
                   url={baseScene}
+                  format={base?.format}
                   color="#90caf9"
                   isVisible={visibleInstances['scene']}
                   isHighlighted={false}
