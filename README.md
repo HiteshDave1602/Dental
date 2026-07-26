@@ -44,11 +44,25 @@ Point the SPA at the middleware with `VITE_API_URL` in `.env` (defaults to
 
 ## The two panels
 
-**Admin** — manages implant libraries, plans, subscriptions and users. The
-important field on a library is **Alignment Vendor**: it maps the library to
-an implant system the compute service can detect. A library without one cannot
-be used for analysis, so the form offers only vendors the engine actually
-reports. Tolerance is configured per library, in **degrees**.
+**Admin** — manages implant libraries, plans, subscriptions and users.
+
+A library needs **two** things before it can align anything:
+
+1. **Alignment Vendor** — maps the library to an implant system.
+2. **Vendor Bundle** — a `.zip` holding that system's complete CAD asset set
+   (~87 files). This is what actually makes the library usable.
+
+The library list shows **Ready / Not ready** per library, with the specific
+reason on hover. That column exists because a library used to look configured
+as soon as the form was filled in, while being unable to run a single job —
+the failure then surfaced days later as a dentist's stuck case.
+
+Uploading a bundle is slow by design: the alignment service downloads, unpacks
+and loads it before accepting, so a bad bundle is rejected while you still have
+the files open. The rejection names the offending asset and is shown verbatim,
+because that is the only thing that makes it fixable.
+
+Tolerance is configured per library, in **degrees**.
 
 There is no admin sign-up screen. The first admin is created from a shell on
 the middleware (`python -m scripts.manage create-admin`).
@@ -81,6 +95,9 @@ refreshing mid-review resumes rather than starting over.
   non-obvious choice.
 - `src/components/AlignmentVendorSelect.jsx` — the library-to-engine mapping
   control; degrades to a text input if the engine is unreachable.
+- `src/components/BundleUpload.jsx` — vendor bundle picker. Treats rejection as
+  a normal outcome rather than an error: the service validates before
+  accepting, so a clear reason is the expected response to a bad archive.
 
 Meshes are cache-busted by query string (`?v=…`) because several are rewritten
 server-side at stable URLs — keep that pattern or the viewer shows stale
