@@ -317,18 +317,18 @@ const api = {
         remove: async (subscriptionId) => apiService.delete(`/subscriptions/${subscriptionId}`),
     },
 
-    // ── Pathfinder (scan-body alignment) ──────────────────────────────────────
-    pathfinder: {
-        createJob,
-        setInstanceVendor,
-        listVendors,
-        rotateAnalog,
-        getJob,
-        calculateAngles,
-        searchAroundPoint,
-        deleteInstance,
-        placeAngleCorrectors,
-    },
+    // NOTE: the `pathfinder` block that used to sit here has been removed. It
+    // re-exported the alignment helpers off this object, but two of its entries
+    // — `createJob` and `getJob` — were deleted when the workflow moved to being
+    // case-scoped, and the shorthand references to them survived. Object
+    // shorthand for a name that does not exist is valid syntax, so the bundler
+    // built it happily and the browser threw `createJob is not defined` while
+    // evaluating this module — which meant the ENTIRE app failed to load, not
+    // just alignment.
+    //
+    // Nothing consumed `api.pathfinder`: every caller imports the named exports
+    // above directly (see PathfinderWorkflow.jsx). Re-adding stubs would have
+    // resurrected the pre-case-scoped flow, so the dead block is simply gone.
 
     // ── Employee / User Panel ─────────────────────────────────────────────────
     employee: {
