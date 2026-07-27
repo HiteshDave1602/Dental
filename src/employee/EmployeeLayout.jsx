@@ -4,6 +4,7 @@ import EmployeeTopbar from './components/EmployeeTopbar';
 import WorkflowHelpFab from './components/WorkflowHelpFab';
 import { useEmployee } from '../context/EmployeeContext';
 import { useAuthStore } from '../store/authStore';
+import { DEMO_MODE } from '../config/demoMode';
 
 const titleByPath = {
   '/dashboard': 'Dashboard',
@@ -32,7 +33,7 @@ const EmployeeLayout = () => {
     );
   }
 
-  if (!employeeAuth.isAuthenticated) {
+  if (!DEMO_MODE && !employeeAuth.isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
 

@@ -14,6 +14,7 @@ import EmployeeMyCases from './employee/pages/EmployeeMyCases';
 import EmployeeLibrary from './employee/pages/EmployeeLibrary';
 import EmployeeSubscription from './employee/pages/EmployeeSubscription';
 import EmployeeSettings from './employee/pages/EmployeeSettings';
+import { DEMO_MODE } from './config/demoMode';
 
 const Login = lazy(() => import('./pages/Login'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
@@ -36,11 +37,12 @@ const LoadingFallback = () => (
 
 const AdminAppRouter = () => {
   const { auth } = useGlobal();
+  const canAccessApp = DEMO_MODE || auth.isAuthenticated;
 
   return (
     <Suspense fallback={<LoadingFallback />}>
       <Routes>
-        {!auth.isAuthenticated ? (
+        {!canAccessApp ? (
           <>
             <Route path="/login" element={<Login />} />
             <Route path="*" element={<Navigate to="/login" replace />} />
@@ -68,11 +70,12 @@ const AdminAppRouter = () => {
 
 const EmployeeAppRouter = () => {
   const { employeeAuth } = useEmployee();
+  const canAccessApp = DEMO_MODE || employeeAuth.isAuthenticated;
 
   return (
     <Suspense fallback={<LoadingFallback />}>
       <Routes>
-        {!employeeAuth.isAuthenticated ? (
+        {!canAccessApp ? (
           <>
             <Route path="/login" element={<EmployeeAuth />} />
             <Route path="*" element={<Navigate to="/login" replace />} />
