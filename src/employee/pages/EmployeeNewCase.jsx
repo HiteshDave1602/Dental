@@ -30,7 +30,7 @@ const validatePatient = (p) => {
 // ── Small shared UI pieces ────────────────────────────────────────────────────
 
 const FieldError = ({ msg }) =>
-  msg ? <p className="text-xs text-rose-400 mt-1">{msg}</p> : null;
+  msg ? <p className="text-xs text-rose-600 mt-1">{msg}</p> : null;
 
 const Spinner = () => (
   <span className="inline-block h-4 w-4 rounded-full border-2 border-current border-t-transparent animate-spin" />
@@ -39,8 +39,8 @@ const Spinner = () => (
 const AlertBanner = ({ msg, variant = 'amber' }) => {
   const colors =
     variant === 'red'
-      ? 'border-rose-400/30 bg-rose-500/10 text-rose-200'
-      : 'border-amber-400/30 bg-amber-500/10 text-amber-200';
+      ? 'border-rose-300 bg-rose-50 text-rose-700'
+      : 'border-amber-300 bg-amber-50 text-amber-700';
   return (
     <div className={`text-xs rounded-xl border px-3 py-2 ${colors}`}>{msg}</div>
   );
@@ -435,12 +435,12 @@ const EmployeeNewCase = () => {
           <button
             type="button"
             onClick={() => goToStep(2)}
-            className="h-10 px-5 rounded-full border border-slate-600 text-slate-300"
+            className="h-10 px-5 rounded-full border border-[#9cd5ff] text-[#12344D] hover:bg-[#c1e5ff]/40"
           >
             ← Back to Scan &amp; Teeth
           </button>
-          <div className="text-sm text-slate-400">
-            {caseRef ? <>Case <span className="text-slate-200 font-semibold">{caseRef}</span></> : null}
+          <div className="text-sm text-[#12344D]/60">
+            {caseRef ? <>Case <span className="text-[#12344D] font-semibold">{caseRef}</span></> : null}
             {patient.fullName ? <span className="ml-3">{patient.fullName}</span> : null}
           </div>
         </div>
@@ -458,7 +458,7 @@ const EmployeeNewCase = () => {
       {/* ── STEP 1 — Patient Details ─────────────────────────────────────── */}
       {currentStep === 1 && (
         <section className="glass-card p-5 space-y-4">
-          <h2 className="employee-heading text-lg text-slate-100">Patient Details</h2>
+          <h2 className="employee-heading text-lg text-[#12344D]">Patient Details</h2>
 
           <div>
             <input
@@ -485,7 +485,7 @@ const EmployeeNewCase = () => {
             </div>
             <div>
               <input
-                className="glass-input h-11 px-3 w-full bg-slate-800/50 text-slate-400 cursor-not-allowed"
+                className="glass-input h-11 px-3 w-full bg-[#f6fbfe] text-[#12344D]/60 cursor-not-allowed"
                 value={caseRef || 'Auto-generated on save'}
                 readOnly
               />
@@ -515,7 +515,7 @@ const EmployeeNewCase = () => {
               disabled={!step1Valid || savingStep1}
               onClick={handleStep1Next}
               title={!step1Valid ? 'Fill all mandatory fields to continue' : ''}
-              className="gradient-btn h-10 px-6 text-slate-950 font-semibold disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center gap-2"
+              className="gradient-btn h-10 px-6 text-white font-semibold disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center gap-2"
             >
               {savingStep1 ? <Spinner /> : !step1Valid ? <Lock size={14} /> : <Sparkles size={14} />}
               {savingStep1 ? 'Saving…' : 'Next Step →'}
@@ -534,59 +534,59 @@ const EmployeeNewCase = () => {
         <section className="space-y-4">
           {/* Scan upload */}
           <article className="glass-card p-5">
-            <h2 className="employee-heading text-lg text-slate-100">Upload Patient Scan Data</h2>
+            <h2 className="employee-heading text-lg text-[#12344D]">Upload Patient Scan Data</h2>
             {!upload ? (
-              <label className="block mt-4 rounded-2xl border border-cyan-400/40 p-8 text-center bg-[#041226] cursor-pointer hover:border-cyan-400/60 transition-colors">
-                <UploadCloud className="mx-auto mt-3 text-cyan-300" />
-                <p className="employee-heading text-slate-100 mt-3">Drop Your Patient Scan File Here</p>
-                <p className="text-sm text-slate-400 mt-1">STL · PLY · OBJ supported — Max 500 MB</p>
-                <span className="gradient-btn inline-flex mt-4 px-5 h-10 items-center text-slate-950 font-semibold">
+              <label className="block mt-4 rounded-2xl border-2 border-dashed border-[#6ab0e3]/60 p-8 text-center bg-[#f6fbfe] cursor-pointer hover:border-[#072ac8] transition-colors">
+                <UploadCloud className="mx-auto mt-3 text-[#6ab0e3]" />
+                <p className="employee-heading text-[#12344D] mt-3">Drop Your Patient Scan File Here</p>
+                <p className="text-sm text-[#12344D]/60 mt-1">STL · PLY · OBJ supported — Max 500 MB</p>
+                <span className="gradient-btn inline-flex mt-4 px-5 h-10 items-center text-white font-semibold">
                   Browse Files
                 </span>
                 <input className="hidden" type="file" accept=".stl,.obj,.ply" onChange={onFilePicked} />
               </label>
             ) : (
               <div className="mt-4 space-y-3">
-                <div className="flex items-center justify-between rounded-xl border border-emerald-400/35 bg-emerald-500/10 p-3">
-                  <div className="text-sm text-emerald-200 flex items-center gap-2">
+                <div className="flex items-center justify-between rounded-xl border border-emerald-300 bg-emerald-50 p-3">
+                  <div className="text-sm text-emerald-700 flex items-center gap-2">
                     {uploadingToBackend ? <Spinner /> : '✓'} {upload.name} ({fileSizeInMb(upload.size)})
-                    {uploadingToBackend && <span className="text-xs text-slate-400">Uploading…</span>}
+                    {uploadingToBackend && <span className="text-xs text-[#12344D]/60">Uploading…</span>}
                   </div>
                   <button
                     type="button"
                     onClick={() => { setUpload(null); setWireframeMode(false); setOrthographicMode(false); }}
-                    className="text-rose-300 text-sm hover:text-rose-200"
+                    className="text-rose-600 text-sm hover:text-rose-700"
                   >
                     Remove
                   </button>
                 </div>
-                <div className="rounded-xl border border-cyan-400/35 bg-[#031022] h-[380px] relative">
-                  <span className="absolute top-3 left-3 text-xs px-2 py-1 rounded-full border border-cyan-400/30 bg-cyan-500/10 text-cyan-200">3D Scan Preview</span>
+                <div className="rounded-xl border border-[#9cd5ff]/70 bg-[#f6fbfe] h-[380px] relative">
+                  <span className="absolute top-3 left-3 text-xs px-2 py-1 rounded-full border border-[#6ab0e3]/50 bg-[#c1e5ff] text-[#0a2472]">3D Scan Preview</span>
                   <div className="absolute right-3 top-3 z-10 flex gap-2 text-xs">
                     {['Solid', 'Wireframe'].map((mode) => (
                       <button
                         key={mode}
                         type="button"
                         onClick={() => setWireframeMode(mode === 'Wireframe')}
-                        className={`px-2 py-1 rounded-full ${wireframeMode === (mode === 'Wireframe') ? 'bg-slate-800 text-slate-200' : 'border border-slate-600 text-slate-300'}`}
+                        className={`px-2 py-1 rounded-full ${wireframeMode === (mode === 'Wireframe') ? 'bg-[#072ac8] text-white' : 'border border-[#9cd5ff] text-[#12344D]/80'}`}
                       >
                         {mode}
                       </button>
                     ))}
-                    <span className="w-px bg-slate-700 mx-0.5" />
+                    <span className="w-px bg-[#9cd5ff] mx-0.5" />
                     {['Perspective', 'Orthographic'].map((mode) => (
                       <button
                         key={mode}
                         type="button"
                         onClick={() => setOrthographicMode(mode === 'Orthographic')}
-                        className={`px-2 py-1 rounded-full ${orthographicMode === (mode === 'Orthographic') ? 'bg-slate-800 text-slate-200' : 'border border-slate-600 text-slate-300'}`}
+                        className={`px-2 py-1 rounded-full ${orthographicMode === (mode === 'Orthographic') ? 'bg-[#072ac8] text-white' : 'border border-[#9cd5ff] text-[#12344D]/80'}`}
                       >
                         {mode}
                       </button>
                     ))}
                   </div>
                   <ScanPreview3D file={upload} wireframe={wireframeMode} orthographic={orthographicMode} />
-                  <div className="absolute left-3 bottom-3 text-xs text-slate-500">🖱 Drag · Scroll · Right-click to pan</div>
+                  <div className="absolute left-3 bottom-3 text-xs text-[#12344D]/50">🖱 Drag · Scroll · Right-click to pan</div>
                 </div>
               </div>
             )}
@@ -595,9 +595,9 @@ const EmployeeNewCase = () => {
           {/* Teeth selection & library assignment (only shown once scan is uploaded) */}
           {upload && (
             <article className="space-y-4">
-              <div className="glass-card p-4 border-l-2 border-cyan-400/50">
-                <h3 className="employee-heading text-slate-100">Assign Implant Library to Teeth</h3>
-                <p className="text-sm text-slate-300 mt-1">
+              <div className="glass-card p-4 border-l-4 border-[#072ac8]">
+                <h3 className="employee-heading text-[#12344D]">Assign Implant Library to Teeth</h3>
+                <p className="text-sm text-[#12344D]/70 mt-1">
                   Click a tooth, choose a brand, then select the matching library entry.
                 </p>
               </div>
@@ -624,15 +624,15 @@ const EmployeeNewCase = () => {
                           }}
                           className={`px-3 py-2 rounded-full text-sm border transition-colors ${
                             activeTooth === tooth
-                              ? 'bg-cyan-500/20 border-cyan-400/35 text-cyan-200'
-                              : 'border-slate-600 text-slate-400 hover:border-slate-500'
+                              ? 'bg-[#072ac8] border-[#072ac8] text-white'
+                              : 'border-[#9cd5ff] text-[#12344D]/60 hover:border-[#072ac8]'
                           }`}
                         >
                           Tooth {tooth} {toothAssignments[tooth] ? '✓' : ''}
                         </button>
                       ))}
                     </div>
-                    <span className="text-xs text-slate-400">Active: {activeTooth || 'None'}</span>
+                    <span className="text-xs text-[#12344D]/60">Active: {activeTooth || 'None'}</span>
                   </div>
 
                   {!activeTooth && (
@@ -643,14 +643,14 @@ const EmployeeNewCase = () => {
                     <div className="space-y-4">
                       {/* Currently assigned badge */}
                       {assignedForTooth && (
-                        <div className="flex items-center justify-between rounded-xl border border-emerald-400/30 bg-emerald-500/10 px-3 py-2 text-sm">
-                          <span className="text-emerald-200">
+                        <div className="flex items-center justify-between rounded-xl border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm">
+                          <span className="text-emerald-700">
                             ✓ Assigned: <strong>{assignedForTooth.company_name}</strong> — {assignedForTooth.manufacturer_id || 'N/A'} · {assignedForTooth.angle_alignment}°
                           </span>
                           <button
                             type="button"
                             onClick={() => removeAssignment(activeTooth)}
-                            className="text-rose-300 hover:text-rose-200"
+                            className="text-rose-600 hover:text-rose-700"
                           >
                             <X size={14} />
                           </button>
@@ -660,13 +660,13 @@ const EmployeeNewCase = () => {
                       {/* Step 1 — Brand */}
                       <div className="flex flex-wrap gap-2 items-end">
                         <div className="relative">
-                          <Search size={14} className="absolute left-3 top-3 text-slate-500" />
-                          <input className="glass-input h-10 pl-8 pr-3" placeholder="Search" />
+                          <Search size={14} className="absolute left-3 top-3 text-[#12344D]/50" />
+                          <input className="glass-input h-10 pl-8 pr-3 placeholder:text-[#12344D]/50" placeholder="Search" />
                         </div>
 
                         {/* Brand dropdown */}
                         <div className="flex flex-col gap-1">
-                          <label className="text-[10px] text-slate-500 uppercase tracking-wide px-1">Brand</label>
+                          <label className="text-[10px] text-[#12344D]/50 uppercase tracking-wide px-1">Brand</label>
                           <select
                             className="glass-input h-10 px-3 min-w-[160px]"
                             value={currentBrandForTooth}
@@ -683,7 +683,7 @@ const EmployeeNewCase = () => {
                         {/* Angle dropdown — shown only after brand selected */}
                         {currentBrandForTooth && (
                           <div className="flex flex-col gap-1">
-                            <label className="text-[10px] text-slate-500 uppercase tracking-wide px-1">
+                            <label className="text-[10px] text-[#12344D]/50 uppercase tracking-wide px-1">
                               Angle Alignment
                             </label>
                             <select
@@ -710,19 +710,19 @@ const EmployeeNewCase = () => {
 
                       {/* Library cards */}
                       {!currentBrandForTooth && (
-                        <p className="text-xs text-slate-400">① Select a brand → ② choose an angle → ③ pick a library.</p>
+                        <p className="text-xs text-[#12344D]/60">① Select a brand → ② choose an angle → ③ pick a library.</p>
                       )}
 
                       {/* Only show hint when libraries haven't loaded yet */}
                       {currentBrandForTooth && !anglesLoading && displayedLibraries.length === 0 && !anglesError && (
-                        <p className="text-xs text-slate-400">No libraries found. Try a different brand or angle.</p>
+                        <p className="text-xs text-[#12344D]/60">No libraries found. Try a different brand or angle.</p>
                       )}
 
                       {/* Skeleton while loading angles + libraries from one API call */}
                       {anglesLoading && (
                         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
                           {[1, 2, 3, 4].map((i) => (
-                            <div key={i} className="h-28 rounded-xl border border-slate-700 bg-slate-800/40 animate-pulse" />
+                            <div key={i} className="h-28 rounded-xl border border-[#9cd5ff]/50 bg-[#c1e5ff]/50 animate-pulse" />
                           ))}
                         </div>
                       )}
@@ -730,7 +730,7 @@ const EmployeeNewCase = () => {
                       {anglesError && <AlertBanner msg={anglesError} />}
 
                       {currentAngleForTooth !== '' && !anglesLoading && displayedLibraries.length === 0 && !anglesError && (
-                        <p className="text-xs text-slate-400">No libraries found for this angle.</p>
+                        <p className="text-xs text-[#12344D]/60">No libraries found for this angle.</p>
                       )}
 
                       {displayedLibraries.length > 0 && (
@@ -744,15 +744,15 @@ const EmployeeNewCase = () => {
                                 onClick={() => handleLibraryAssign(lib)}
                                 className={`text-left p-3 rounded-xl border transition-all ${
                                   isAssigned
-                                    ? 'border-cyan-300 bg-cyan-500/10 shadow-[0_0_15px_rgba(0,212,255,.3)]'
-                                    : 'border-slate-600 hover:border-cyan-400/35'
+                                    ? 'border-[#072ac8] bg-[#c1e5ff]/40 shadow-[0_0_15px_rgba(7,42,200,.2)]'
+                                    : 'border-[#9cd5ff] hover:border-[#072ac8]'
                                 }`}
                               >
                                 <div className="flex items-center justify-between gap-2">
-                                  <p className="text-sm text-slate-100 truncate">{lib.company_name}</p>
-                                  <span className="shrink-0 text-[10px] px-2 py-1 rounded-full border border-cyan-400/25 text-cyan-200">Admin</span>
+                                  <p className="text-sm text-[#12344D] truncate">{lib.company_name}</p>
+                                  <span className="shrink-0 text-[10px] px-2 py-1 rounded-full border border-[#6ab0e3]/50 text-[#0a2472]">Admin</span>
                                 </div>
-                                <p className="text-xs text-slate-400 mt-1">
+                                <p className="text-xs text-[#12344D]/60 mt-1">
                                   {lib.manufacturer_id || 'N/A'} · {lib.angle_alignment}°
                                 </p>
                                 {/* All asset filenames */}
@@ -760,15 +760,15 @@ const EmployeeNewCase = () => {
                                   <div className="mt-2 space-y-0.5">
                                     {lib.assets.map((asset) => (
                                       <div key={asset.id} className="flex items-center gap-1.5">
-                                        <span className="shrink-0 text-[9px] px-1.5 py-0.5 rounded border border-slate-600 text-slate-500 uppercase tracking-wide">
+                                        <span className="shrink-0 text-[9px] px-1.5 py-0.5 rounded border border-[#9cd5ff]/70 text-[#12344D]/50 uppercase tracking-wide">
                                           {asset.asset_type}
                                         </span>
-                                        <p className="text-[10px] text-slate-400 truncate">{asset.file_name}</p>
+                                        <p className="text-[10px] text-[#12344D]/60 truncate">{asset.file_name}</p>
                                       </div>
                                     ))}
                                   </div>
                                 )}
-                                <p className="text-[11px] text-slate-500 mt-2">
+                                <p className="text-[11px] text-[#12344D]/50 mt-2">
                                   {isAssigned ? '✓ Assigned' : `Click to assign to Tooth ${activeTooth}`}
                                 </p>
                               </button>
@@ -781,13 +781,13 @@ const EmployeeNewCase = () => {
 
                   {/* Assignment Summary */}
                   <div className="glass-card p-3 space-y-2">
-                    <h4 className="employee-heading text-sm text-slate-100">Assignment Summary</h4>
+                    <h4 className="employee-heading text-sm text-[#12344D]">Assignment Summary</h4>
                     {selectedTeeth.map((tooth) => {
                       const a = toothAssignments[tooth];
                       return (
                         <div key={tooth} className="flex items-center justify-between text-sm">
-                          <span className="text-slate-300">Tooth {tooth}</span>
-                          <span className={a ? 'text-cyan-200' : 'text-amber-300'}>
+                          <span className="text-[#12344D]/80">Tooth {tooth}</span>
+                          <span className={a ? 'text-[#072ac8] font-semibold' : 'text-amber-600'}>
                             {a ? `${a.company_name} · ${a.manufacturer_id || 'N/A'} ✓` : '[Not assigned]'}
                           </span>
                         </div>
@@ -807,17 +807,17 @@ const EmployeeNewCase = () => {
           type="button"
           onClick={() => goToStep(Math.max(currentStep - 1, 1))}
           disabled={currentStep === 1}
-          className="h-10 px-5 rounded-full border border-slate-600 text-slate-300 disabled:opacity-40"
+          className="h-10 px-5 rounded-full border border-[#9cd5ff] text-[#12344D] hover:bg-[#c1e5ff]/40 disabled:opacity-40"
         >
           Back
         </button>
 
         {currentStep === 1 ? null /* Next handled inside step 1 */ : currentStep === 2 ? (
           <div className="text-right">
-            <div className="text-xs text-slate-400 mb-1">
-              <span className={upload ? 'text-emerald-300' : 'text-slate-500'}>☑ Scan uploaded</span>{' · '}
-              <span className={selectedTeeth.length > 0 ? 'text-emerald-300' : 'text-slate-500'}>☑ Teeth selected</span>{' · '}
-              <span className={allAssigned ? 'text-emerald-300' : 'text-slate-500'}>
+            <div className="text-xs text-[#12344D]/60 mb-1">
+              <span className={upload ? 'text-emerald-600' : 'text-[#12344D]/50'}>☑ Scan uploaded</span>{' · '}
+              <span className={selectedTeeth.length > 0 ? 'text-emerald-600' : 'text-[#12344D]/50'}>☑ Teeth selected</span>{' · '}
+              <span className={allAssigned ? 'text-emerald-600' : 'text-[#12344D]/50'}>
                 ☑ All assigned ({Object.keys(toothAssignments).length}/{selectedTeeth.length})
               </span>
             </div>
@@ -826,7 +826,7 @@ const EmployeeNewCase = () => {
               disabled={!canGoToStep3}
               onClick={handleNextFromStep2}
               title={!canGoToStep3 ? 'Upload scan and assign all teeth to continue' : ''}
-              className="h-10 px-5 rounded-full bg-slate-700 text-slate-300 disabled:opacity-70 disabled:cursor-not-allowed inline-flex items-center gap-2"
+              className="h-10 px-5 rounded-full bg-[#072ac8] text-white hover:bg-[#0a2472] disabled:opacity-70 disabled:cursor-not-allowed inline-flex items-center gap-2"
             >
               {!canGoToStep3 ? <Lock size={14} /> : <FileUp size={14} />}
               Next Step →

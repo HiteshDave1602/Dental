@@ -23,12 +23,12 @@ const Tooth = ({ id, selected, onToggle }) => {
           d={shapeByType[type]}
           className={cn(
             'transition-all duration-200',
-            selected ? 'fill-cyan-400 stroke-cyan-200 drop-shadow-[0_0_10px_rgba(0,212,255,.8)]' : 'fill-transparent stroke-slate-500 hover:stroke-cyan-300'
+            selected ? 'fill-[#6ab0e3] stroke-[#072ac8] drop-shadow-[0_0_10px_rgba(106,176,227,.8)]' : 'fill-transparent stroke-[#9cd5ff] hover:stroke-[#072ac8]'
           )}
           strokeWidth="1.2"
         />
       </svg>
-      <span className={cn('text-[11px]', selected ? 'text-cyan-200' : 'text-slate-400')}>{id}</span>
+      <span className={cn('text-[11px]', selected ? 'text-[#072ac8] font-semibold' : 'text-[#12344D]/60')}>{id}</span>
     </button>
   );
 };
@@ -38,22 +38,22 @@ const ToothChart = ({ selectedTeeth, onToggle, onClear }) => {
 
   return (
     <div className="glass-card p-4 space-y-4">
-      <h3 className="employee-heading text-base text-slate-100">Select Affected Teeth</h3>
-      <p className="text-xs text-slate-400">Upper Jaw</p>
+      <h3 className="employee-heading text-base text-[#12344D]">Select Affected Teeth</h3>
+      <p className="text-xs text-[#12344D]/60">Upper Jaw</p>
       <div className="grid grid-cols-8 gap-2">
         {upperTeeth.map((id) => <Tooth key={id} id={id} selected={selectedTeeth.includes(id)} onToggle={onToggle} />)}
       </div>
-      <p className="text-xs text-slate-400 pt-2">Lower Jaw</p>
+      <p className="text-xs text-[#12344D]/60 pt-2">Lower Jaw</p>
       <div className="grid grid-cols-8 gap-2">
         {lowerTeeth.map((id) => <Tooth key={id} id={id} selected={selectedTeeth.includes(id)} onToggle={onToggle} />)}
       </div>
       <div className="flex items-center justify-between pt-2">
         <div className="flex flex-wrap gap-2">
           {selectedList.length ? selectedList.map((id) => (
-            <span key={id} className="px-2 py-1 rounded-full bg-cyan-500/15 text-cyan-200 border border-cyan-400/35 text-xs">{id}</span>
-          )) : <span className="text-xs text-slate-500">No teeth selected</span>}
+            <span key={id} className="px-2 py-1 rounded-full bg-[#c1e5ff] text-[#0a2472] border border-[#6ab0e3] text-xs">{id}</span>
+          )) : <span className="text-xs text-[#12344D]/50">No teeth selected</span>}
         </div>
-        <button type="button" onClick={onClear} className="text-xs text-cyan-300 hover:underline">Clear Selection</button>
+        <button type="button" onClick={onClear} className="text-xs text-[#072ac8] font-semibold hover:underline">Clear Selection</button>
       </div>
     </div>
   );

@@ -42,31 +42,31 @@ const EmployeeSettings = () => {
   };
 
   return (
-    <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+    <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 text-[#12344D]">
       <section className="glass-card p-5 xl:col-span-2 space-y-4">
-        <h2 className="employee-heading text-slate-100">Profile</h2>
+        <h2 className="employee-heading text-[#12344D]">Profile</h2>
         <form onSubmit={saveProfile} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <input
-              className="glass-input h-11 px-3"
+              className="glass-input h-11 px-3 placeholder:text-[#12344D]/50"
               placeholder="Full Name"
               value={profile.full_name}
               onChange={(e) => setProfile((s) => ({ ...s, full_name: e.target.value }))}
             />
             <input
-              className="glass-input h-11 px-3"
+              className="glass-input h-11 px-3 bg-[#f6fbfe] text-[#12344D]/60"
               value={employeeUser.email}
               readOnly
               title="Email cannot be changed"
             />
             <input
-              className="glass-input h-11 px-3"
+              className="glass-input h-11 px-3 placeholder:text-[#12344D]/50"
               placeholder="Clinic Name"
               value={profile.clinic_name}
               onChange={(e) => setProfile((s) => ({ ...s, clinic_name: e.target.value }))}
             />
             <input
-              className="glass-input h-11 px-3"
+              className="glass-input h-11 px-3 placeholder:text-[#12344D]/50"
               placeholder="Phone"
               value={profile.phone}
               onChange={(e) => setProfile((s) => ({ ...s, phone: e.target.value }))}
@@ -75,23 +75,23 @@ const EmployeeSettings = () => {
           <button
             type="submit"
             disabled={saving}
-            className="gradient-btn h-10 px-5 text-slate-950 font-semibold disabled:opacity-40"
+            className="gradient-btn h-10 px-5 text-white font-semibold disabled:opacity-40"
           >
             {saving ? 'Saving...' : 'Save Profile'}
           </button>
         </form>
 
-        <h3 className="employee-heading text-slate-100 pt-2">Security</h3>
+        <h3 className="employee-heading text-[#12344D] pt-2">Security</h3>
         <form onSubmit={changePassword} className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <input
-            className="glass-input h-11 px-3"
+            className="glass-input h-11 px-3 placeholder:text-[#12344D]/50"
             type="password"
             placeholder="Current password"
             value={passwords.current_password}
             onChange={(e) => setPasswords((s) => ({ ...s, current_password: e.target.value }))}
           />
           <input
-            className="glass-input h-11 px-3"
+            className="glass-input h-11 px-3 placeholder:text-[#12344D]/50"
             type="password"
             placeholder="New password"
             value={passwords.new_password}
@@ -100,7 +100,7 @@ const EmployeeSettings = () => {
           <button
             type="submit"
             disabled={saving || !passwords.current_password || !passwords.new_password}
-            className="gradient-btn h-10 px-5 text-slate-950 font-semibold disabled:opacity-40"
+            className="gradient-btn h-10 px-5 text-white font-semibold disabled:opacity-40"
           >
             Change Password
           </button>
@@ -108,18 +108,18 @@ const EmployeeSettings = () => {
       </section>
 
       <section className="glass-card p-5 space-y-3">
-        <h2 className="employee-heading text-slate-100">Notifications</h2>
-        <label className="flex items-center justify-between text-slate-300">
+        <h2 className="employee-heading text-[#12344D]">Notifications</h2>
+        <label className="flex items-center justify-between text-[#12344D]/80">
           <span>Email Alerts</span>
           <input type="checkbox" defaultChecked />
         </label>
-        <label className="flex items-center justify-between text-slate-300">
+        <label className="flex items-center justify-between text-[#12344D]/80">
           <span>In-App Alerts</span>
           <input type="checkbox" defaultChecked />
         </label>
         <button
           onClick={logoutEmployee}
-          className="mt-6 w-full h-10 border border-red-400/40 text-red-300 rounded-xl hover:bg-red-500/10"
+          className="mt-6 w-full h-10 border border-rose-300 text-rose-600 rounded-xl hover:bg-rose-50"
         >
           Logout
         </button>

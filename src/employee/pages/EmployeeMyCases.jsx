@@ -3,16 +3,16 @@ import { ChevronDown, ChevronUp, Search } from 'lucide-react';
 import api, { notifyError } from '../../Script/api';
 
 const STATUS_CLASS = {
-  completed: 'bg-cyan-500/20 text-cyan-200 border-cyan-400/30',
-  processing: 'bg-violet-500/20 text-violet-200 border-violet-400/30',
-  pending: 'bg-amber-500/20 text-amber-200 border-amber-400/30',
-  failed: 'bg-red-500/20 text-red-200 border-red-400/30',
+  completed: 'bg-[#6ab0e3] text-white border-[#6ab0e3]',
+  processing: 'bg-[#9cd5ff]/35 text-[#12344D] border-[#6ab0e3]/55',
+  pending: 'bg-[#c1e5ff]/60 text-[#12344D] border-[#9cd5ff]',
+  failed: 'bg-[#12344D] text-white border-[#12344D]',
 };
 
 const TOLERANCE_CLASS = {
-  within: 'text-emerald-300',
-  marginal: 'text-amber-300',
-  exceeds: 'text-rose-300',
+  within: 'text-emerald-600',
+  marginal: 'text-amber-600',
+  exceeds: 'text-rose-600',
 };
 
 const EmployeeMyCases = () => {
@@ -88,16 +88,16 @@ const EmployeeMyCases = () => {
   };
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 text-[#12344D]">
       <section className="glass-card p-4 flex flex-wrap gap-3 items-center justify-between">
-        <h2 className="employee-heading text-slate-100">
-          Case History <span className="text-cyan-300">({total})</span>
+        <h2 className="employee-heading text-[#12344D]">
+          Case History <span className="text-[#072ac8]">({total})</span>
         </h2>
         <form onSubmit={handleSearch} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 w-full lg:w-auto">
           <div className="relative w-full">
-            <Search size={15} className="absolute left-3 top-3 text-slate-500" />
+            <Search size={15} className="absolute left-3 top-3 text-[#12344D]/50" />
             <input
-              className="glass-input h-10 pl-8 pr-3 w-full"
+              className="glass-input h-10 pl-8 pr-3 w-full placeholder:text-[#12344D]/50"
               placeholder="Search patient"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -114,34 +114,34 @@ const EmployeeMyCases = () => {
             <option value="completed">Completed</option>
             <option value="failed">Failed</option>
           </select>
-          <button type="submit" className="glass-input h-10 px-3 w-full text-cyan-300 text-sm">Search</button>
-          <button type="button" onClick={exportAll} className="gradient-btn h-10 px-4 text-slate-950 font-semibold w-full">Export CSV</button>
+          <button type="submit" className="glass-input h-10 px-3 w-full text-[#072ac8] text-sm font-semibold hover:bg-[#c1e5ff]/40">Search</button>
+          <button type="button" onClick={exportAll} className="gradient-btn h-10 px-4 text-white font-semibold w-full">Export CSV</button>
         </form>
       </section>
 
       <section className="glass-card overflow-hidden">
         {loading ? (
-          <div className="p-6 text-center text-slate-400 text-sm">Loading cases...</div>
+          <div className="p-6 text-center text-sm text-[#12344D]/60">Loading cases...</div>
         ) : cases.length === 0 ? (
-          <div className="p-6 text-center text-slate-400 text-sm">No cases found.</div>
+          <div className="p-6 text-center text-sm text-[#12344D]/60">No cases found.</div>
         ) : (
           <>
             <div className="grid grid-cols-1 gap-3 p-3 md:hidden">
               {cases.map((row) => (
-                <article key={row.id} className="rounded-xl border border-cyan-400/20 bg-cyan-500/5 p-3">
+                <article key={row.id} className="rounded-xl border border-[#9cd5ff] bg-[#c1e5ff]/30 p-3">
                   <div className="flex items-center justify-between gap-3">
-                    <p className="text-sm text-slate-100 font-semibold">{row.case_reference}</p>
-                    <span className={`text-xs px-2 py-1 rounded-full border ${STATUS_CLASS[row.status] || 'border-slate-600 text-slate-400'}`}>{row.status}</span>
+                    <p className="text-sm text-[#12344D] font-semibold">{row.case_reference}</p>
+                    <span className={`text-xs px-2 py-1 rounded-full border ${STATUS_CLASS[row.status] || 'border-[#9cd5ff] text-[#12344D]/60'}`}>{row.status}</span>
                   </div>
-                  <p className="text-sm text-slate-300 mt-2">{row.patient_name} · Age {row.patient_age}</p>
-                  <p className="text-xs text-slate-400 mt-1">Teeth: {(row.teeth || []).map((t) => t.tooth_number).join(', ') || '—'}</p>
-                  <p className="text-xs text-slate-400 mt-1">Date: {row.case_date || '—'}</p>
+                  <p className="text-sm text-[#12344D]/80 mt-2">{row.patient_name} · Age {row.patient_age}</p>
+                  <p className="text-xs text-[#12344D]/60 mt-1">Teeth: {(row.teeth || []).map((t) => t.tooth_number).join(', ') || '—'}</p>
+                  <p className="text-xs text-[#12344D]/60 mt-1">Date: {row.case_date || '—'}</p>
                 </article>
               ))}
             </div>
 
             <table className="hidden md:table w-full table-fixed">
-              <thead className="text-left text-xs text-slate-400">
+              <thead className="bg-[#c1e5ff]/30 text-left text-xs font-semibold uppercase tracking-wider text-[#12344D]/60">
                 <tr>
                   <th className="p-3">Case ID</th>
                   <th className="p-3">Patient</th>
@@ -158,14 +158,14 @@ const EmployeeMyCases = () => {
                   const isOpen = expanded === row.id;
                   return (
                     <Fragment key={row.id}>
-                      <tr className="border-t border-cyan-400/10 hover:bg-cyan-500/5">
-                        <td className="p-3 text-slate-200 break-words">{row.case_reference}</td>
-                        <td className="p-3 text-slate-300 break-words">{row.patient_name}</td>
-                        <td className="p-3 text-slate-300">{row.patient_age}</td>
-                        <td className="p-3 text-slate-300 break-words">{(row.teeth || []).map((t) => t.tooth_number).join(', ') || '—'}</td>
-                        <td className="p-3 text-slate-300 break-words">{row.case_date || '—'}</td>
+                      <tr className="border-t border-[#9cd5ff]/40 hover:bg-[#c1e5ff]/35">
+                        <td className="p-3 text-[#12344D] break-words font-semibold">{row.case_reference}</td>
+                        <td className="p-3 text-[#12344D]/80 break-words">{row.patient_name}</td>
+                        <td className="p-3 text-[#12344D]/80">{row.patient_age}</td>
+                        <td className="p-3 text-[#12344D]/80 break-words">{(row.teeth || []).map((t) => t.tooth_number).join(', ') || '—'}</td>
+                        <td className="p-3 text-[#12344D]/80 break-words">{row.case_date || '—'}</td>
                         <td className="p-3">
-                          <span className={`text-xs px-2 py-1 rounded-full border ${STATUS_CLASS[row.status] || 'border-slate-600 text-slate-400'}`}>
+                          <span className={`text-xs px-2 py-1 rounded-full border ${STATUS_CLASS[row.status] || 'border-[#9cd5ff] text-[#12344D]/60'}`}>
                             {row.status}
                           </span>
                         </td>
@@ -173,7 +173,7 @@ const EmployeeMyCases = () => {
                           <button
                             type="button"
                             onClick={() => toggleResults(row.id)}
-                            className="text-xs text-cyan-300 hover:text-cyan-200 inline-flex items-center gap-1"
+                            className="text-xs text-[#072ac8] hover:text-[#0a2472] inline-flex items-center gap-1"
                           >
                             {isOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                             {isOpen ? 'Hide' : 'View'} angles
@@ -182,33 +182,33 @@ const EmployeeMyCases = () => {
                       </tr>
 
                       {isOpen && (
-                        <tr className="border-t border-cyan-400/10 bg-[#031022]">
+                        <tr className="border-t border-[#9cd5ff]/40 bg-[#f6fbfe]">
                           <td colSpan={7} className="p-3">
                             {analysis === 'loading' && (
-                              <p className="text-xs text-slate-400">Loading results…</p>
+                              <p className="text-xs text-[#12344D]/60">Loading results…</p>
                             )}
                             {analysis === 'none' && (
-                              <p className="text-xs text-slate-400">
+                              <p className="text-xs text-[#12344D]/60">
                                 No analysis recorded yet. Open the case and complete the alignment review.
                               </p>
                             )}
                             {analysis && analysis !== 'loading' && analysis !== 'none' && (
                               <div className="space-y-2">
-                                <div className="text-xs text-slate-400">
+                                <div className="text-xs text-[#12344D]/60">
                                   {analysis.total_implants} implant(s) · average{' '}
-                                  <span className="text-slate-200">{analysis.average_angle}°</span>
+                                  <span className="text-[#12344D] font-semibold">{analysis.average_angle}°</span>
                                   {analysis.engine_version ? ` · engine ${analysis.engine_version}` : ''}
                                 </div>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                                   {(analysis.results || []).map((r) => (
-                                    <div key={r.id} className="rounded-lg border border-cyan-400/20 bg-cyan-500/5 p-2 text-xs">
+                                    <div key={r.id} className="rounded-lg border border-[#9cd5ff]/70 bg-white p-2 text-xs">
                                       <div className="flex items-center justify-between">
-                                        <span className="text-slate-200 font-semibold">Tooth {r.tooth_number}</span>
-                                        <span className={TOLERANCE_CLASS[r.tolerance_status] || 'text-slate-300'}>
+                                        <span className="text-[#12344D] font-semibold">Tooth {r.tooth_number}</span>
+                                        <span className={TOLERANCE_CLASS[r.tolerance_status] || 'text-[#12344D]/80'}>
                                           {Number(r.insertion_angle).toFixed(2)}° · {r.tolerance_status}
                                         </span>
                                       </div>
-                                      <div className="text-slate-400 mt-1">
+                                      <div className="text-[#12344D]/60 mt-1">
                                         {r.library_name || '—'}
                                         {r.corrector_angle_deg != null && (
                                           <> · corrector {r.corrector_angle_deg}°</>
@@ -234,15 +234,15 @@ const EmployeeMyCases = () => {
       {total > 20 && (
         <div className="flex items-center justify-center gap-3">
           <button
-            className="glass-input h-9 px-4 text-sm text-slate-300 disabled:opacity-40"
+            className="glass-input h-9 px-4 text-sm text-[#12344D] disabled:opacity-40"
             disabled={page === 1}
             onClick={() => setPage((p) => Math.max(p - 1, 1))}
           >
             Previous
           </button>
-          <span className="text-sm text-slate-400">Page {page}</span>
+          <span className="text-sm text-[#12344D]/60">Page {page}</span>
           <button
-            className="glass-input h-9 px-4 text-sm text-slate-300 disabled:opacity-40"
+            className="glass-input h-9 px-4 text-sm text-[#12344D] disabled:opacity-40"
             disabled={cases.length < 20}
             onClick={() => setPage((p) => p + 1)}
           >

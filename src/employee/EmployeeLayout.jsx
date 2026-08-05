@@ -29,8 +29,8 @@ const EmployeeLayout = () => {
 
   if (!hasHydrated) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-[#050B18]">
-        <div className="h-10 w-10 rounded-full border-2 border-cyan-400 border-t-transparent animate-spin" />
+      <div className="flex items-center justify-center min-h-screen bg-[#fcfdf6]">
+        <div className="h-10 w-10 rounded-full border-2 border-[#072ac8] border-t-transparent animate-spin" />
       </div>
     );
   }

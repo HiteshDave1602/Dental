@@ -92,7 +92,7 @@ const EmployeeDashboard = () => {
           <button
             type="button"
             onClick={() => navigate('/new-case')}
-            className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-white px-6 font-semibold text-[#12344D] shadow-lg shadow-[#6ab0e3]/25 transition-all hover:-translate-y-0.5 hover:bg-[#c1e5ff] focus:outline-none focus:ring-4 focus:ring-[#9cd5ff]/35"
+            className="inline-flex h-12 items-center justify-center gap-2 rounded-xl border border-[#9cd5ff]/45 bg-[#072ac8] px-6 font-semibold text-white shadow-lg shadow-[#072ac8]/35 transition-all hover:-translate-y-0.5 hover:bg-[#0a2472] focus:outline-none focus:ring-4 focus:ring-[#9cd5ff]/45"
           >
             <Plus size={18} /> New Case
           </button>

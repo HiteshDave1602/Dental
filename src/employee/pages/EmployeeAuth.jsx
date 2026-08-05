@@ -67,14 +67,14 @@ const EmployeeAuth = () => {
   };
 
   return (
-    <div className="employee-shell min-h-screen grid lg:grid-cols-2 px-4 py-8 lg:px-16">
+    <div className="employee-shell min-h-screen grid lg:grid-cols-2 px-4 py-8 lg:px-16 text-[#12344D]">
       <section className="hidden lg:flex flex-col justify-center pr-10">
         <div className="glass-card p-10 relative overflow-hidden">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(0,212,255,0.15),transparent_40%)]" />
-          <h1 className="employee-heading text-4xl text-slate-100 relative">Precision Dental Alignment</h1>
-          <p className="text-slate-300 mt-4 relative">Powered by Advanced 3D Algorithms ✦</p>
-          <div className="mt-8 h-64 rounded-2xl border border-cyan-400/30 bg-gradient-to-br from-cyan-500/10 to-violet-500/10 relative">
-            <div className="absolute inset-0 animate-pulse opacity-70 [background:radial-gradient(circle_at_40%_30%,rgba(0,212,255,0.2),transparent_45%)]" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(106,176,227,0.2),transparent_40%)]" />
+          <h1 className="employee-heading text-4xl text-[#12344D] relative">Precision Dental Alignment</h1>
+          <p className="text-[#12344D]/70 mt-4 relative">Powered by Advanced 3D Algorithms ✦</p>
+          <div className="mt-8 h-64 rounded-2xl border border-[#6ab0e3]/50 bg-gradient-to-br from-[#c1e5ff]/50 to-[#9cd5ff]/40 relative">
+            <div className="absolute inset-0 animate-pulse opacity-70 [background:radial-gradient(circle_at_40%_30%,rgba(106,176,227,0.25),transparent_45%)]" />
           </div>
         </div>
       </section>
@@ -87,7 +87,7 @@ const EmployeeAuth = () => {
                 key={currentTab}
                 type="button"
                 onClick={() => setTab(currentTab)}
-                className={`px-4 py-2 rounded-full text-sm font-semibold border ${tab === currentTab ? 'bg-cyan-500/20 border-cyan-400/35 text-cyan-200' : 'border-slate-700 text-slate-400'}`}
+                className={`px-4 py-2 rounded-full text-sm font-semibold border ${tab === currentTab ? 'bg-[#072ac8] border-[#072ac8] text-white' : 'border-[#9cd5ff] text-[#12344D]/60 hover:bg-[#c1e5ff]/40'}`}
               >
                 {currentTab === 'login' ? 'Login' : 'Register'}
               </button>
@@ -97,46 +97,46 @@ const EmployeeAuth = () => {
           <form className="space-y-4" onSubmit={tab === 'login' ? submitLogin : submitRegister}>
             {tab === 'register' ? (
               <div>
-                <label className="text-sm text-slate-300">Full Name</label>
+                <label className="text-sm text-[#12344D]/80">Full Name</label>
                 <div className="relative mt-1">
-                  <UserRound size={16} className="absolute top-3 left-3 text-slate-500" />
+                  <UserRound size={16} className="absolute top-3 left-3 text-[#12344D]/50" />
                   <input className="glass-input h-11 w-full pl-9 pr-3" value={form.fullName} onChange={(e) => setForm((s) => ({ ...s, fullName: e.target.value }))} required />
                 </div>
               </div>
             ) : null}
 
             <div>
-              <label className="text-sm text-slate-300">Email</label>
+              <label className="text-sm text-[#12344D]/80">Email</label>
               <div className="relative mt-1">
-                <Mail size={16} className="absolute top-3 left-3 text-slate-500" />
+                <Mail size={16} className="absolute top-3 left-3 text-[#12344D]/50" />
                 <input type="email" className="glass-input h-11 w-full pl-9 pr-3" value={form.email} onChange={(e) => setForm((s) => ({ ...s, email: e.target.value }))} required />
               </div>
             </div>
 
             <div>
-              <label className="text-sm text-slate-300">Password</label>
+              <label className="text-sm text-[#12344D]/80">Password</label>
               <div className="relative mt-1">
-                <Lock size={16} className="absolute top-3 left-3 text-slate-500" />
+                <Lock size={16} className="absolute top-3 left-3 text-[#12344D]/50" />
                 <input type="password" className="glass-input h-11 w-full pl-9 pr-3" value={form.password} onChange={(e) => setForm((s) => ({ ...s, password: e.target.value }))} required />
               </div>
             </div>
 
             {tab === 'register' ? (
               <div>
-                <label className="text-sm text-slate-300">Confirm Password</label>
+                <label className="text-sm text-[#12344D]/80">Confirm Password</label>
                 <input type="password" className="glass-input h-11 w-full px-3 mt-1" value={form.confirmPassword} onChange={(e) => setForm((s) => ({ ...s, confirmPassword: e.target.value }))} required />
               </div>
             ) : null}
 
-            <div className="flex items-center justify-between text-sm text-slate-400 pt-1">
+            <div className="flex items-center justify-between text-sm text-[#12344D]/60 pt-1">
               <span>{tab === 'login' ? 'Forgot Password?' : 'Create secure access'}</span>
-              <span className="text-cyan-300">Help</span>
+              <span className="text-[#072ac8] font-semibold">Help</span>
             </div>
 
             <button
               type="submit"
               disabled={(tab === 'register' && !canRegister) || loading}
-              className="gradient-btn h-11 w-full text-slate-950 font-semibold disabled:opacity-40"
+              className="gradient-btn h-11 w-full text-white font-semibold disabled:opacity-40"
             >
               {loading ? 'Please wait...' : tab === 'login' ? 'Sign In' : 'Create Account'}
             </button>

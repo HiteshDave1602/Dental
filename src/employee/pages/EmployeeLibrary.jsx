@@ -7,9 +7,9 @@ const PAGE_SIZE = 12;
 
 const Skeleton = () => (
   <div className="glass-card p-4 animate-pulse space-y-3">
-    <div className="h-32 rounded-xl bg-slate-800/60" />
-    <div className="h-4 rounded bg-slate-700/60 w-3/4" />
-    <div className="h-3 rounded bg-slate-700/40 w-1/2" />
+    <div className="h-32 rounded-xl bg-[#c1e5ff]/60" />
+    <div className="h-4 rounded bg-[#9cd5ff]/50 w-3/4" />
+    <div className="h-3 rounded bg-[#9cd5ff]/40 w-1/2" />
   </div>
 );
 
@@ -83,15 +83,15 @@ const EmployeeLibrary = () => {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 text-[#12344D]">
       {/* Filters */}
       <div className="glass-card p-4 flex flex-wrap gap-2 items-center justify-between">
-        <div className="text-sm text-slate-400">
+        <div className="text-sm text-[#12344D]/60">
           {total > 0 ? `${total} librar${total === 1 ? 'y' : 'ies'} found` : 'No libraries'}
         </div>
         <div className="flex gap-2 flex-wrap">
           <input
-            className="glass-input h-10 px-3 min-w-[180px]"
+            className="glass-input h-10 px-3 min-w-[180px] placeholder:text-[#12344D]/50"
             placeholder="Search by brand…"
             value={search}
             onChange={(e) => handleSearchChange(e.target.value)}
@@ -108,7 +108,7 @@ const EmployeeLibrary = () => {
           </select>
           {(search || selectedBrand) && (
             <button
-              className="h-10 px-3 rounded-xl border border-slate-600 text-slate-300 text-sm hover:border-slate-500"
+              className="h-10 px-3 rounded-xl border border-[#9cd5ff] text-[#12344D] text-sm hover:bg-[#c1e5ff]/40"
               onClick={() => { setSearch(''); setSelectedBrand(''); setPage(1); loadLibraries('', '', 1); }}
             >
               Clear
@@ -119,7 +119,7 @@ const EmployeeLibrary = () => {
 
       {/* Error */}
       {error && (
-        <div className="rounded-xl border border-rose-400/30 bg-rose-500/10 text-rose-200 px-4 py-3 text-sm">
+        <div className="rounded-xl border border-rose-300 bg-rose-50 text-rose-700 px-4 py-3 text-sm">
           {error}
         </div>
       )}
@@ -130,28 +130,28 @@ const EmployeeLibrary = () => {
           ? Array.from({ length: PAGE_SIZE }).map((_, i) => <Skeleton key={i} />)
           : libraries.length === 0
           ? (
-            <div className="col-span-full text-center text-slate-400 py-12">
+            <div className="col-span-full text-center text-[#12344D]/60 py-12">
               No libraries match your filters.
             </div>
           )
           : libraries.map((lib) => (
             <article key={lib.id} className="glass-card p-4 flex flex-col">
-              <div className="h-32 rounded-xl bg-[#040915] border border-cyan-400/20 mb-3 grid place-content-center text-slate-600 text-xs">
+              <div className="h-32 rounded-xl bg-[#f6fbfe] border border-[#9cd5ff]/70 mb-3 grid place-content-center text-[#12344D]/50 text-xs">
                 3D preview
               </div>
-              <h3 className="text-slate-100 employee-heading text-base">{lib.company_name}</h3>
-              <p className="text-sm text-slate-400 mt-1">
+              <h3 className="text-[#12344D] employee-heading text-base">{lib.company_name}</h3>
+              <p className="text-sm text-[#12344D]/70 mt-1">
                 {lib.manufacturer_id || 'N/A'} · {lib.angle_alignment}°
               </p>
-              <p className="text-xs text-slate-500 mt-1">Tolerance: {lib.tolerance_degree}°</p>
+              <p className="text-xs text-[#12344D]/50 mt-1">Tolerance: {lib.tolerance_degree}°</p>
               <div className="mt-auto pt-4 flex items-center justify-between">
                 <button
-                  className="text-cyan-300 text-sm hover:text-cyan-200"
+                  className="text-[#072ac8] text-sm font-semibold hover:text-[#0a2472]"
                   onClick={() => navigate('/new-case')}
                 >
                   Use in New Case →
                 </button>
-                <span className="text-xs px-2 py-1 rounded-full border border-slate-600 text-slate-400">
+                <span className="text-xs px-2 py-1 rounded-full border border-[#6ab0e3]/60 text-[#0a2472]">
                   Admin
                 </span>
               </div>
@@ -165,17 +165,17 @@ const EmployeeLibrary = () => {
           <button
             disabled={page === 1}
             onClick={() => handlePageChange(page - 1)}
-            className="h-9 w-9 rounded-full border border-slate-600 text-slate-300 grid place-content-center disabled:opacity-40"
+            className="h-9 w-9 rounded-full border border-[#9cd5ff] text-[#12344D] grid place-content-center hover:bg-[#c1e5ff]/40 disabled:opacity-40"
           >
             <ChevronLeft size={16} />
           </button>
-          <span className="text-sm text-slate-400">
+          <span className="text-sm text-[#12344D]/60">
             Page {page} of {totalPages}
           </span>
           <button
             disabled={page === totalPages}
             onClick={() => handlePageChange(page + 1)}
-            className="h-9 w-9 rounded-full border border-slate-600 text-slate-300 grid place-content-center disabled:opacity-40"
+            className="h-9 w-9 rounded-full border border-[#9cd5ff] text-[#12344D] grid place-content-center hover:bg-[#c1e5ff]/40 disabled:opacity-40"
           >
             <ChevronRight size={16} />
           </button>
