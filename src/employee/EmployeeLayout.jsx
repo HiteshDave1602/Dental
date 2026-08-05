@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import EmployeeSidebar from './components/EmployeeSidebar';
 import EmployeeTopbar from './components/EmployeeTopbar';
@@ -23,6 +24,7 @@ const titleByPath = {
 const EmployeeLayout = () => {
   const { employeeAuth } = useEmployee();
   const { pathname } = useLocation();
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const hasHydrated = useAuthStore.persist?.hasHydrated?.() ?? true;
 
   if (!hasHydrated) {
@@ -39,10 +41,21 @@ const EmployeeLayout = () => {
 
   return (
     <div className="employee-shell flex w-full overflow-x-hidden">
-      <EmployeeSidebar />
-      <div className="flex-1 min-h-screen min-w-0 lg:pl-[240px]">
+      <EmployeeSidebar
+        collapsed={isSidebarCollapsed}
+        onToggle={() => setIsSidebarCollapsed((current) => !current)}
+      />
+      <div
+        className={`flex-1 min-h-screen min-w-0 bg-white transition-[padding] duration-300 ease-in-out ${
+          isSidebarCollapsed ? 'lg:pl-16' : 'lg:pl-[280px]'
+        }`}
+      >
         <EmployeeTopbar title={titleByPath[pathname] || 'MyPathFinder'} />
-        <main className="p-3 sm:p-4 lg:p-6 max-w-full overflow-x-hidden">
+        <main
+          className={`p-3 sm:p-4 lg:p-6 max-w-full min-h-[calc(100vh-88px)] overflow-x-hidden ${
+            pathname === '/dashboard' ? 'bg-white' : 'bg-[#FCFDF6]'
+          }`}
+        >
           <Outlet />
         </main>
       </div>
