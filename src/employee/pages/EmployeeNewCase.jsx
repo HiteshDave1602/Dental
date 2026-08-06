@@ -50,7 +50,7 @@ const AlertBanner = ({ msg, variant = 'amber' }) => {
 
 // The wizard is three steps:
 //
-//   1. Patient details            -> creates the case
+//   1. Patient details            -> validates locally and moves to scan upload
 //   2. Scan upload + tooth chart  -> assigns libraries and uploads the scan,
 //                                    which submits an alignment job server-side
 //   3. Alignment review           -> PathfinderWorkflow, scoped to this case
@@ -89,7 +89,6 @@ const EmployeeNewCase = () => {
   // ── Local (non-persisted) state ───────────────────────────────────────────
   const [patient, setPatient] = useState(patientData);
   const [fieldErrors, setFieldErrors] = useState({});
-  const [savingStep1, setSavingStep1] = useState(false);
 
   const [upload, setUpload] = useState(null);          // File object — can't persist
   const [uploadingToBackend, setUploadingToBackend] = useState(false);
@@ -196,33 +195,14 @@ const EmployeeNewCase = () => {
     setFieldErrors((e) => ({ ...e, [field]: undefined }));
   }, []);
 
-  const handleStep1Next = async () => {
+  const handleStep1Next = () => {
     const errors = validatePatient(patient);
     if (Object.keys(errors).length) {
       setFieldErrors(errors);
       return;
     }
 
-    setSavingStep1(true);
-    try {
-      // If we already have a caseId (user refreshed mid-flow), skip creation
-      if (!caseId) {
-        const res = await api.employee.cases.create({
-          patient_name: patient.fullName.trim(),
-          patient_age: parseInt(patient.age, 10),
-          case_date: patient.caseDate,
-          doctor_notes: patient.notes || null,
-        });
-        const data = res.data?.data || res.data;
-        setCaseCreated(data.id, data.case_reference);
-        notifySuccess(`Case ${data.case_reference} created`);
-      }
-      setStep(2);
-    } catch (err) {
-      notifyError(extractErrorMessage(err, 'Failed to create case'));
-    } finally {
-      setSavingStep1(false);
-    }
+    setStep(2);
   };
 
   const onFilePicked = async (event) => {
@@ -285,24 +265,9 @@ const EmployeeNewCase = () => {
     }
   };
 
-  const handleNextFromStep2 = async () => {
+  const handleNextFromStep2 = () => {
     if (!canGoToStep3) return;
-    // Analysis (Step 3) requires the case's tooth↔library assignments to
-    // already exist server-side — sync them now instead of waiting for the
-    // final Step 5 save, which happens too late for `analysis.calculate` to see them.
-    if (caseId) {
-      const teeth = selectedTeeth.map((tooth) => ({
-        tooth_number: tooth,
-        library_id: toothAssignments[tooth]?.library_id ?? null,
-      }));
-      try {
-        await api.employee.cases.addTeeth(caseId, teeth);
-      } catch (err) {
-        notifyError(extractErrorMessage(err, 'Failed to save teeth assignments'));
-        return;
-      }
-    }
-    goToStep(3);
+    setStep(3);
   };
 
   // The alignment vendor call is async: submitting a job just starts it
@@ -512,13 +477,13 @@ const EmployeeNewCase = () => {
           <div className="flex justify-end">
             <button
               type="button"
-              disabled={!step1Valid || savingStep1}
+              disabled={!step1Valid}
               onClick={handleStep1Next}
               title={!step1Valid ? 'Fill all mandatory fields to continue' : ''}
               className="gradient-btn h-10 px-6 text-white font-semibold disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center gap-2"
             >
-              {savingStep1 ? <Spinner /> : !step1Valid ? <Lock size={14} /> : <Sparkles size={14} />}
-              {savingStep1 ? 'Saving…' : 'Next Step →'}
+              {!step1Valid ? <Lock size={14} /> : <Sparkles size={14} />}
+              Next Step →
             </button>
           </div>
         </section>

@@ -63,10 +63,42 @@ const EmployeeDashboard = () => {
   }, []);
 
   const statCards = [
-    { label: 'Total Cases', value: stats.total, icon: FolderKanban },
-    { label: 'Completed', value: stats.completed, icon: CheckCircle2 },
-    { label: 'In Progress', value: stats.pending, icon: Clock3 },
-    { label: 'Current Plan', value: stats.plan, icon: Crown },
+    {
+      label: 'Total Cases',
+      value: stats.total,
+      icon: FolderKanban,
+      accent: 'from-[#072ac8] to-[#2541b2]',
+      iconBg: 'bg-[#c1e5ff]',
+      iconText: 'text-[#072ac8]',
+      progress: 'bg-[#072ac8]',
+    },
+    {
+      label: 'Completed',
+      value: stats.completed,
+      icon: CheckCircle2,
+      accent: 'from-[#6ab0e3] to-[#072ac8]',
+      iconBg: 'bg-[#d9efff]',
+      iconText: 'text-[#0a2472]',
+      progress: 'bg-[#6ab0e3]',
+    },
+    {
+      label: 'In Progress',
+      value: stats.pending,
+      icon: Clock3,
+      accent: 'from-[#9cd5ff] to-[#2541b2]',
+      iconBg: 'bg-[#e8f6ff]',
+      iconText: 'text-[#2541b2]',
+      progress: 'bg-[#2541b2]',
+    },
+    {
+      label: 'Current Plan',
+      value: stats.plan,
+      icon: Crown,
+      accent: 'from-[#0a2472] to-[#072ac8]',
+      iconBg: 'bg-[#c1e5ff]',
+      iconText: 'text-[#0a2472]',
+      progress: 'bg-[#0a2472]',
+    },
   ];
 
   return (
@@ -105,22 +137,26 @@ const EmployeeDashboard = () => {
           return (
             <div
               key={stat.label}
-              className="group rounded-2xl border border-[#0a2472] bg-white p-5 shadow-[0_10px_30px_rgba(10,36,114,0.18)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_16px_36px_rgba(10,36,114,0.28)]"
+              className="group relative overflow-hidden rounded-2xl border border-[#9cd5ff]/70 bg-white p-5 shadow-[0_10px_28px_rgba(10,36,114,0.12)] transition-all duration-300 hover:-translate-y-1 hover:border-[#072ac8] hover:shadow-[0_16px_36px_rgba(10,36,114,0.20)]"
             >
+              <div className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${stat.accent}`} />
+              <div className="pointer-events-none absolute right-0 top-0 h-24 w-24 -translate-y-10 translate-x-10 rounded-full bg-[#c1e5ff]/35" />
               <div className="flex items-start justify-between">
                 <div>
-                  <p className="text-sm font-semibold text-[#12344D]/60">{stat.label}</p>
-                  <p className="employee-heading mt-3 text-3xl font-bold capitalize text-[#12344D]">
+                  <p className="text-sm font-bold text-[#12344D]/65">{stat.label}</p>
+                  <p className="employee-heading mt-4 text-3xl font-black capitalize leading-none text-[#12344D]">
                     {loading ? '...' : stat.value}
                   </p>
                 </div>
-                <div className="grid h-11 w-11 place-content-center rounded-xl bg-[#c1e5ff] text-[#0a2472] transition-colors group-hover:bg-[#0a2472] group-hover:text-white">
+                <div
+                  className={`relative grid h-12 w-12 place-content-center rounded-xl ${stat.iconBg} ${stat.iconText} shadow-[inset_0_0_0_1px_rgba(156,213,255,0.7)] transition-colors group-hover:bg-[#0a2472] group-hover:text-white`}
+                >
                   <StatIcon size={21} />
                 </div>
               </div>
-              <div className="mt-5 h-1.5 overflow-hidden rounded-full bg-[#c1e5ff]">
+              <div className="mt-6 h-1.5 overflow-hidden rounded-full bg-[#c1e5ff]/80">
                 <div
-                  className="h-full rounded-full bg-[#6ab0e3]"
+                  className={`h-full rounded-full ${stat.progress}`}
                   style={{ width: `${Math.min(38 + index * 16, 88)}%` }}
                 />
               </div>

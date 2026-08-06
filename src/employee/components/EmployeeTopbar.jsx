@@ -27,7 +27,7 @@ const EmployeeTopbar = ({ title }) => {
         <button
           type="button"
           aria-label="Notifications"
-          className="relative grid h-10 w-10 place-content-center rounded-xl border border-[#9cd5ff] bg-[#f6fbfe] text-[#072ac8] transition-all hover:border-[#6ab0e3] hover:bg-[#6ab0e3] hover:text-white"
+          className="relative grid h-10 w-10 place-content-center rounded-xl border border-[#9cd5ff] bg-[#f6fbfe] text-[#072ac8] transition-all hover:border-[#0a2472] hover:bg-[#0a2472] hover:text-white"
         >
           <Bell size={16} />
           <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-[#6ab0e3] ring-2 ring-[#c1e5ff]" />

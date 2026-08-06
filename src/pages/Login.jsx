@@ -4,7 +4,6 @@ import { Mail, Lock, Eye, EyeOff, ShieldCheck, Microscope } from 'lucide-react';
 import { useGlobal } from '../context/GlobalContext';
 import Input from '../components/ui/Input';
 import Button from '../components/ui/Button';
-import api from '../Script/api';
 
 const Login = () => {
     const navigate = useNavigate();
@@ -17,34 +16,21 @@ const Login = () => {
         password: '',
     });
 
-    const handleLogin = async (e) => {
+    const handleLogin = (e) => {
         e.preventDefault();
         setError('');
         setIsLoading(true);
 
-        try {
-            const response = await api.auth.login(formData.email, formData.password);
-            const payload = response.data || {};
-            const accessToken = payload.access_token || payload.token;
+        const currentUser = {
+            name: formData.email || 'Demo Administrator',
+            role: 'System Administrator',
+            email: formData.email,
+        };
 
-            if (!accessToken) {
-                throw new Error('Access token not received from login API.');
-            }
-
-            const currentUser = {
-                name: payload.user?.username || payload.user?.name || formData.email,
-                role: payload.user?.role || 'System Administrator',
-                email: payload.user?.email || formData.email,
-            };
-
-            setAuth({ isAuthenticated: true, token: accessToken });
-            setUser(currentUser);
-            setIsLoading(false);
-            navigate('/');
-        } catch (err) {
-            setIsLoading(false);
-            setError(err.response?.data?.detail || err.response?.data?.message || err.message || 'Login failed.');
-        }
+        setAuth({ isAuthenticated: true, token: 'local-dashboard-access' });
+        setUser(currentUser);
+        setIsLoading(false);
+        navigate('/dashboard');
     };
 
     return (

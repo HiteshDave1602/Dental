@@ -37,25 +37,28 @@ const ToothChart = ({ selectedTeeth, onToggle, onClear }) => {
   const selectedList = useMemo(() => [...selectedTeeth].sort((a, b) => Number(a) - Number(b)), [selectedTeeth]);
 
   return (
-    <div className="glass-card p-4 space-y-4">
-      <h3 className="employee-heading text-base text-[#12344D]">Select Affected Teeth</h3>
-      <p className="text-xs text-[#12344D]/60">Upper Jaw</p>
-      <div className="grid grid-cols-8 gap-2">
-        {upperTeeth.map((id) => <Tooth key={id} id={id} selected={selectedTeeth.includes(id)} onToggle={onToggle} />)}
-      </div>
-      <p className="text-xs text-[#12344D]/60 pt-2">Lower Jaw</p>
-      <div className="grid grid-cols-8 gap-2">
-        {lowerTeeth.map((id) => <Tooth key={id} id={id} selected={selectedTeeth.includes(id)} onToggle={onToggle} />)}
-      </div>
-      <div className="flex items-center justify-between pt-2">
-        <div className="flex flex-wrap gap-2">
-          {selectedList.length ? selectedList.map((id) => (
-            <span key={id} className="px-2 py-1 rounded-full bg-[#c1e5ff] text-[#0a2472] border border-[#6ab0e3] text-xs">{id}</span>
-          )) : <span className="text-xs text-[#12344D]/50">No teeth selected</span>}
-        </div>
-        <button type="button" onClick={onClear} className="text-xs text-[#072ac8] font-semibold hover:underline">Clear Selection</button>
-      </div>
+    <div>
+
     </div>
+    // <div className="glass-card p-4 space-y-4">
+    //   <h3 className="employee-heading text-base text-[#12344D]">Select Affected Teeth</h3>
+    //   <p className="text-xs text-[#12344D]/60">Upper Jaw</p>
+    //   <div className="grid grid-cols-8 gap-2">
+    //     {upperTeeth.map((id) => <Tooth key={id} id={id} selected={selectedTeeth.includes(id)} onToggle={onToggle} />)}
+    //   </div>
+    //   <p className="text-xs text-[#12344D]/60 pt-2">Lower Jaw</p>
+    //   <div className="grid grid-cols-8 gap-2">
+    //     {lowerTeeth.map((id) => <Tooth key={id} id={id} selected={selectedTeeth.includes(id)} onToggle={onToggle} />)}
+    //   </div>
+    //   <div className="flex items-center justify-between pt-2">
+    //     <div className="flex flex-wrap gap-2">
+    //       {selectedList.length ? selectedList.map((id) => (
+    //         <span key={id} className="px-2 py-1 rounded-full bg-[#c1e5ff] text-[#0a2472] border border-[#6ab0e3] text-xs">{id}</span>
+    //       )) : <span className="text-xs text-[#12344D]/50">No teeth selected</span>}
+    //     </div>
+    //     <button type="button" onClick={onClear} className="text-xs text-[#072ac8] font-semibold hover:underline">Clear Selection</button>
+    //   </div>
+    // </div>
   );
 };
 
