@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap');
 
 @import "tailwindcss";
 @config "../tailwind.config.js";
@@ -63,4 +63,32 @@
 /* For specific teal accent scrollbars if needed */
 .teal-scrollbar::-webkit-scrollbar-thumb {
   background: #0d9488;
+}
+
+@utility employee-shell {
+  @apply min-h-[100dvh] w-full overflow-x-hidden;
+}
+
+@utility employee-heading {
+  @apply font-employeeHeading;
+}
+
+@utility glass-card {
+  @apply rounded-2xl border border-[#0a2472] bg-white shadow-[0_10px_30px_rgba(10,36,114,0.18)];
+}
+
+@utility glass-input {
+  @apply rounded-xl border border-[#9cd5ff]/90 bg-white text-[#12344D] outline-none focus:border-[#6ab0e3] focus:shadow-[0_0_0_3px_rgba(106,176,227,0.2)];
+}
+
+@utility gradient-btn {
+  @apply rounded-xl bg-gradient-to-br from-[#072ac8] to-[#2541b2] shadow-[0_8px_20px_rgba(7,42,200,0.3)];
+}
+
+@utility glow-hover {
+  @apply hover:shadow-[0_0_14px_rgba(7,42,200,0.25)];
+}
+
+@utility pulse-cyan {
+  @apply animate-pulse-cyan;
 }

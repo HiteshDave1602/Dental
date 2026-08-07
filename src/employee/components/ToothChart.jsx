@@ -62,4 +62,4 @@ const ToothChart = ({ selectedTeeth, onToggle, onClear }) => {
   );
 };
 
-export default ToothChart;
+export default ToothChart;  

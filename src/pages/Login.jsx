@@ -1,138 +1,130 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Mail, Lock, Eye, EyeOff, ShieldCheck, Microscope } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, Microscope, UserRound } from 'lucide-react';
 import { useGlobal } from '../context/GlobalContext';
-import Input from '../components/ui/Input';
-import Button from '../components/ui/Button';
+import dentalVideo from '../assets/Untitled design.mp4';
 
 const Login = () => {
     const navigate = useNavigate();
     const { setAuth, setUser } = useGlobal();
+    const [isRegistering, setIsRegistering] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
-    const [error, setError] = useState('');
-    const [formData, setFormData] = useState({
-        email: '',
-        password: '',
-    });
+    const [formData, setFormData] = useState({ name: '', email: '', password: '' });
 
-    const handleLogin = (e) => {
-        e.preventDefault();
-        setError('');
+    const updateField = (field) => (event) => {
+        setFormData((current) => ({ ...current, [field]: event.target.value }));
+    };
+
+    const handleSubmit = (event) => {
+        event.preventDefault();
         setIsLoading(true);
 
-        const currentUser = {
-            name: formData.email || 'Demo Administrator',
+        setAuth({ isAuthenticated: true, token: 'local-dashboard-access' });
+        setUser({
+            name: isRegistering ? formData.name || 'New Administrator' : formData.email || 'Demo Administrator',
             role: 'System Administrator',
             email: formData.email,
-        };
-
-        setAuth({ isAuthenticated: true, token: 'local-dashboard-access' });
-        setUser(currentUser);
+        });
         setIsLoading(false);
         navigate('/dashboard');
     };
 
+    const switchMode = () => {
+        setIsRegistering((current) => !current);
+        setShowPassword(false);
+    };
+
+    const inputClass = 'w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3.5 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-[#0d9488] focus:bg-white focus:ring-4 focus:ring-teal-500/10';
+
     return (
-        <div className="min-h-screen w-full flex flex-col items-center justify-center bg-[#f8fafc] relative overflow-hidden">
-            {/* Background Decorations */}
-            <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-clinical-blue/5 rounded-full blur-3xl animate-pulse"></div>
-            <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-clinical-teal/5 rounded-full blur-3xl animate-pulse delay-700"></div>
+        <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#f4f9f8] px-5 py-10">
+            <div className="absolute -left-24 top-0 h-72 w-72 rounded-full bg-teal-200/40 blur-3xl" />
+            <div className="absolute -bottom-32 -right-20 h-96 w-96 rounded-full bg-sky-200/50 blur-3xl" />
 
-            <div className="z-10 w-full max-w-[520px] px-6 flex flex-col items-center">
-                {/* Logo & Header */}
-                <div className="mb-8 flex flex-col items-center animate-in fade-in slide-in-from-bottom-4 duration-700">
-                    <div className="w-16 h-16 bg-[#0d9488] rounded-2xl flex items-center justify-center text-white shadow-xl shadow-teal-500/20 mb-6 group transition-transform hover:scale-105 duration-300">
-                        <Microscope size={32} className="group-hover:rotate-12 transition-transform duration-500" />
+            <section className="relative z-10 grid w-full max-w-5xl overflow-hidden rounded-[2rem] border border-white/80 bg-white shadow-2xl shadow-slate-900/10 md:min-h-[570px] md:grid-cols-2">
+                <aside className={`relative min-h-[310px] overflow-hidden p-7 text-white transition-all duration-700 md:min-h-full md:p-10 ${isRegistering ? 'md:order-2' : 'md:order-1'}`}>
+                    <video
+                        className="absolute inset-0 h-full w-full object-cover"
+                        src={dentalVideo}
+                        autoPlay
+                        loop
+                        muted
+                        playsInline
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-br from-[#075e57]/90 via-[#0d9488]/75 to-[#1f9bbf]/55" />
+                    <div className="relative flex h-full flex-col justify-between">
+                        
+                        <div className="max-w-xs pt-14 md:pt-0">
+                            <p className="mb-3 text-sm font-semibold text-white/75">{isRegistering ? 'Already a member?' : 'New to ImplaScan?'}</p>
+                            <h1 className="text-3xl font-bold leading-tight md:text-4xl">
+                                {isRegistering ? 'Welcome back.' : 'Hello, welcome!'}
+                            </h1>
+                            <p className="mt-4 text-sm leading-6 text-white/80">
+                                {isRegistering ? 'Sign in to continue managing your dental analysis workspace.' : 'Create an account and bring clarity to every implant analysis.'}
+                            </p>
+                            <button
+                                type="button"
+                                onClick={switchMode}
+                                className="mt-7 rounded-xl border border-white/75 px-6 py-2.5 text-sm font-bold text-white transition hover:bg-white hover:text-[#0d9488] focus:outline-none focus:ring-4 focus:ring-white/30"
+                            >
+                                {isRegistering ? 'Login' : 'Register'}
+                            </button>
+                        </div>
                     </div>
-                    <h1 className="text-3xl font-bold text-slate-900 mb-2 tracking-tight">ImplaScan Admin</h1>
-                    <p className="text-slate-500 text-center font-medium">Enter your credentials to access the analysis dashboard.</p>
-                </div>
+                </aside>
 
-                {/* Login Card */}
-                <div className="w-full bg-white rounded-2xl shadow-2xl shadow-slate-200/60 p-10 border border-slate-200/60 animate-in fade-in slide-in-from-bottom-8 duration-700 delay-150">
-                    <form onSubmit={handleLogin} className="space-y-8">
-                        <div className="space-y-3">
-                            <label className="text-sm font-bold text-slate-800 ml-1">Email Address</label>
-                            <Input
-                                type="email"
-                                value={formData.email}
-                                onChange={(e) => setFormData((current) => ({ ...current, email: e.target.value }))}
-                                placeholder="admin@implascan.com"
-                                icon={Mail}
-                                className="bg-slate-50/50 border-slate-200 h-14 rounded-xl focus:bg-white transition-all text-base"
-                                required
-                            />
+                <div className={`flex items-center justify-center px-7 py-10 transition-all duration-700 sm:px-12 md:px-14 ${isRegistering ? 'md:order-1' : 'md:order-2'}`}>
+                    <div className="w-full max-w-sm">
+                        <div className="mb-8">
+                            <p className="text-sm font-semibold text-[#0d9488]">{isRegistering ? 'GET STARTED' : 'ADMIN PORTAL'}</p>
+                            <h2 className="mt-2 text-3xl font-bold tracking-tight text-slate-900">{isRegistering ? 'Create account' : 'Login'}</h2>
+                            <p className="mt-2 text-sm text-slate-500">{isRegistering ? 'Set up your ImplaScan workspace.' : 'Use your credentials to access the dashboard.'}</p>
                         </div>
 
-                        <div className="space-y-3">
-                            <label className="text-sm font-bold text-slate-800 ml-1">Password</label>
-                            <div className="relative">
-                                <Input
-                                    type={showPassword ? 'text' : 'password'}
-                                    value={formData.password}
-                                    onChange={(e) => setFormData((current) => ({ ...current, password: e.target.value }))}
-                                    placeholder="••••••••"
-                                    icon={Lock}
-                                    className="bg-slate-50/50 border-slate-200 h-14 rounded-xl focus:bg-white transition-all pr-12 text-base"
-                                    required
-                                />
-                                <button
-                                    type="button"
-                                    onClick={() => setShowPassword(!showPassword)}
-                                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
-                                >
-                                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                                </button>
-                            </div>
-                        </div>
-
-                        <div className="flex items-center justify-between px-1">
-                            <label className="flex items-center gap-2 cursor-pointer group">
-                                <input type="checkbox" className="w-4 h-4 rounded border-slate-300 text-clinical-teal focus:ring-clinical-teal/20 transition-all cursor-pointer" />
-                                <span className="text-sm font-semibold text-slate-500 group-hover:text-slate-700 transition-colors">Remember me</span>
-                            </label>
-                            <button type="button" className="text-sm font-bold text-[#0d9488] hover:underline transition-all">Forgot password?</button>
-                        </div>
-
-                        {error ? (
-                            <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-600">
-                                {error}
-                            </div>
-                        ) : null}
-
-                        <Button
-                            type="submit"
-                            className="w-full h-14 bg-[#0d9488] hover:bg-[#0c857a] text-white rounded-xl font-bold text-base shadow-lg shadow-teal-500/25 transition-all active:scale-[0.98]"
-                            disabled={isLoading}
-                        >
-                            {isLoading ? (
-                                <div className="flex items-center gap-2">
-                                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                                    <span>Signing in...</span>
-                                </div>
-                            ) : (
-                                "Sign in to Dashboard"
+                        <form onSubmit={handleSubmit} className="space-y-4">
+                            {isRegistering && (
+                                <label className="block">
+                                    <span className="mb-2 block text-sm font-semibold text-slate-700">Full name</span>
+                                    <div className="relative">
+                                        <UserRound className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                                        <input className={`${inputClass} pl-11`} value={formData.name} onChange={updateField('name')} placeholder="Dr. Jane Smith" required />
+                                    </div>
+                                </label>
                             )}
-                        </Button>
-                    </form>
+                            <label className="block">
+                                <span className="mb-2 block text-sm font-semibold text-slate-700">Email address</span>
+                                <div className="relative">
+                                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                                    <input className={`${inputClass} pl-11`} type="email" value={formData.email} onChange={updateField('email')} placeholder="admin@implascan.com" required />
+                                </div>
+                            </label>
+                            <label className="block">
+                                <span className="mb-2 block text-sm font-semibold text-slate-700">Password</span>
+                                <div className="relative">
+                                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                                    <input className={`${inputClass} px-11`} type={showPassword ? 'text' : 'password'} value={formData.password} onChange={updateField('password')} placeholder="••••••••" required />
+                                    <button type="button" onClick={() => setShowPassword((current) => !current)} aria-label={showPassword ? 'Hide password' : 'Show password'} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 transition hover:text-slate-700">
+                                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                    </button>
+                                </div>
+                            </label>
 
-                    <div className="mt-8 pt-6 border-t border-slate-50 flex justify-center">
-                        <div className="flex items-center gap-2 text-[11px] font-bold text-slate-400 uppercase tracking-[0.1em]">
-                            <ShieldCheck size={14} className="text-[#0d9488]" />
-                            SECURE ADMIN PORTAL
-                        </div>
+                            {!isRegistering && <div className="flex justify-end"><button type="button" className="text-sm font-semibold text-[#0d9488] hover:underline">Forgot password?</button></div>}
+
+                            <button type="submit" disabled={isLoading} className="mt-2 w-full rounded-xl bg-[#0d9488] py-3.5 text-sm font-bold text-white shadow-lg shadow-teal-500/25 transition hover:bg-[#0c857a] disabled:cursor-wait disabled:opacity-75">
+                                {isLoading ? 'Please wait…' : isRegistering ? 'Create account' : 'Login'}
+                            </button>
+                        </form>
+
+                        <p className="mt-7 text-center text-sm text-slate-500">
+                            {isRegistering ? 'Already have an account?' : "Don't have an account?"}{' '}
+                            <button type="button" onClick={switchMode} className="font-bold text-[#0d9488] hover:underline">{isRegistering ? 'Login' : 'Register'}</button>
+                        </p>
                     </div>
                 </div>
-
-                {/* Navigation Footer */}
-                <div className="mt-12 flex items-center justify-center gap-8 w-full">
-                    <button className="text-[13px] text-slate-400 font-semibold hover:text-slate-600 transition-colors">Terms of Service</button>
-                    <button className="text-[13px] text-slate-400 font-semibold hover:text-slate-600 transition-colors">Privacy Policy</button>
-                    <button className="text-[13px] text-slate-400 font-semibold hover:text-slate-600 transition-colors">Support</button>
-                </div>
-            </div>
-        </div>
+            </section>
+        </main>
     );
 };
 

@@ -1,11 +1,10 @@
-import React, { Suspense, lazy, useEffect } from 'react';
+import React, { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Navigate, Route, Routes } from 'react-router-dom';
 import { GlobalProvider, useGlobal } from './context/GlobalContext';
 import DashboardLayout from './components/layout/DashboardLayout';
 import { ToastContainer } from 'react-toastify';
 import { ContextProviderClass } from './ContextProvider';
 import { EmployeeProvider, useEmployee } from './context/EmployeeContext';
-import './employee/employee.css';
 import EmployeeLayout from './employee/EmployeeLayout';
 import EmployeeAuth from './employee/pages/EmployeeAuth';
 import EmployeeDashboard from './employee/pages/EmployeeDashboard';
@@ -102,13 +101,6 @@ const EmployeeAppRouter = () => {
 
 const RootRouter = () => {
   const isAdminHost = typeof window !== 'undefined' && window.location.hostname.startsWith('admin.');
-
-  useEffect(() => {
-    document.body.classList.toggle('employee-theme', !isAdminHost);
-    return () => {
-      document.body.classList.remove('employee-theme');
-    };
-  }, [isAdminHost]);
 
   if (isAdminHost) {
     return (

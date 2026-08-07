@@ -39,6 +39,28 @@ export default {
             },
             fontFamily: {
                 sans: ['Inter', 'sans-serif'],
+                employeeHeading: ['Space Grotesk', 'sans-serif'],
+            },
+            keyframes: {
+                pulseCyan: {
+                    '0%, 100%': { boxShadow: '0 0 0 0 rgba(7, 42, 200, 0.35)' },
+                    '50%': { boxShadow: '0 0 0 10px rgba(106, 176, 227, 0.12)' },
+                },
+                authVideoToRegister: {
+                    '0%': { left: '0', width: '50%', borderRadius: '0 48% 48% 0' },
+                    '46%, 58%': { left: '0', width: '100%', borderRadius: '0' },
+                    '100%': { left: '50%', width: '50%', borderRadius: '48% 0 0 48%' },
+                },
+                authVideoToLogin: {
+                    '0%': { left: '50%', width: '50%', borderRadius: '48% 0 0 48%' },
+                    '46%, 58%': { left: '0', width: '100%', borderRadius: '0' },
+                    '100%': { left: '0', width: '50%', borderRadius: '0 48% 48% 0' },
+                },
+            },
+            animation: {
+                'pulse-cyan': 'pulseCyan 1.8s infinite',
+                'auth-video-to-register': 'authVideoToRegister 1000ms cubic-bezier(0.65, 0, 0.35, 1) both',
+                'auth-video-to-login': 'authVideoToLogin 1000ms cubic-bezier(0.65, 0, 0.35, 1) both',
             },
             boxShadow: {
                 'premium': '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)',
