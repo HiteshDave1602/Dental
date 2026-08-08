@@ -551,7 +551,7 @@ const EmployeeNewCase = () => {
                     ))}
                   </div>
                   <ScanPreview3D file={upload} wireframe={wireframeMode} orthographic={orthographicMode} />
-                  <div className="absolute left-3 bottom-3 text-xs text-[#12344D]/50">🖱 Drag · Scroll · Right-click to pan</div>
+                  <div className="absolute left-3 bottom-3 text-xs text-white">🖱 Drag · Scroll · Right-click to pan</div>
                 </div>
               </div>
             )}

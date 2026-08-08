@@ -32,12 +32,25 @@ const EmployeeAuth = () => {
     transitionTimer.current = window.setTimeout(() => setVideoTransition(''), 1000);
   };
 
-  const submitLogin = (event) => {
+  const submitLogin = async (event) => {
     event.preventDefault();
     setLoading(true);
-    setEmployeeSession('local-dashboard-access', { name: form.email || 'Demo Dentist', email: form.email, plan: 'free' });
-    notifySuccess('Welcome back!');
-    setLoading(false);
+    try {
+      const res = await api.employee.auth.login({ email: form.email, password: form.password });
+      const { access_token, user } = res.data?.data || res.data;
+      if (!access_token) throw new Error('The server did not return an access token.');
+      setEmployeeSession(access_token, {
+        name: user?.full_name || user?.name || user?.email || form.email,
+        email: user?.email || form.email,
+        plan: user?.active_plan || user?.plan || 'free',
+      });
+      notifySuccess('Welcome back!');
+    } catch (err) {
+      const detail = err?.response?.data?.detail;
+      notifyError(typeof detail === 'string' ? detail : err.message || 'Login failed.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const submitRegister = async (event) => {

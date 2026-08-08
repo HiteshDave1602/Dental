@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useFormik } from 'formik';
 import { Mail, Lock, Eye, EyeOff, Microscope, UserRound } from 'lucide-react';
 import { useGlobal } from '../context/GlobalContext';
 import dentalVideo from '../assets/Untitled design.mp4';
+import { loginValidationSchema, signupValidationSchema } from '../utils/authValidation';
 
 const Login = () => {
     const navigate = useNavigate();
@@ -10,29 +12,29 @@ const Login = () => {
     const [isRegistering, setIsRegistering] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
-    const [formData, setFormData] = useState({ name: '', email: '', password: '' });
-
-    const updateField = (field) => (event) => {
-        setFormData((current) => ({ ...current, [field]: event.target.value }));
-    };
-
-    const handleSubmit = (event) => {
-        event.preventDefault();
+    const formik = useFormik({
+        initialValues: { name: '', email: '', password: '' },
+        validationSchema: isRegistering ? signupValidationSchema : loginValidationSchema,
+        onSubmit: (values) => {
         setIsLoading(true);
 
         setAuth({ isAuthenticated: true, token: 'local-dashboard-access' });
         setUser({
-            name: isRegistering ? formData.name || 'New Administrator' : formData.email || 'Demo Administrator',
+            name: isRegistering ? values.name || 'New Administrator' : values.email || 'Demo Administrator',
             role: 'System Administrator',
-            email: formData.email,
+            email: values.email,
         });
         setIsLoading(false);
         navigate('/dashboard');
-    };
+        },
+    });
+    const formData = formik.values;
+    const updateField = (field) => (event) => formik.setFieldValue(field, event.target.value);
 
     const switchMode = () => {
         setIsRegistering((current) => !current);
         setShowPassword(false);
+        formik.setTouched({});
     };
 
     const inputClass = 'w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3.5 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-[#0d9488] focus:bg-white focus:ring-4 focus:ring-teal-500/10';
@@ -82,22 +84,24 @@ const Login = () => {
                             <p className="mt-2 text-sm text-slate-500">{isRegistering ? 'Set up your ImplaScan workspace.' : 'Use your credentials to access the dashboard.'}</p>
                         </div>
 
-                        <form onSubmit={handleSubmit} className="space-y-4">
+                        <form onSubmit={formik.handleSubmit} noValidate className="space-y-4">
                             {isRegistering && (
                                 <label className="block">
                                     <span className="mb-2 block text-sm font-semibold text-slate-700">Full name</span>
                                     <div className="relative">
                                         <UserRound className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                                        <input className={`${inputClass} pl-11`} value={formData.name} onChange={updateField('name')} placeholder="Dr. Jane Smith" required />
+                                        <input className={`${inputClass} pl-11`} name="name" value={formik.values.name} onChange={formik.handleChange} onBlur={formik.handleBlur} placeholder="Dr. Jane Smith" />
                                     </div>
+                                    {formik.touched.name && formik.errors.name && <p className="mt-1 text-xs font-medium text-red-600">{formik.errors.name}</p>}
                                 </label>
                             )}
                             <label className="block">
                                 <span className="mb-2 block text-sm font-semibold text-slate-700">Email address</span>
                                 <div className="relative">
                                     <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                                    <input className={`${inputClass} pl-11`} type="email" value={formData.email} onChange={updateField('email')} placeholder="admin@implascan.com" required />
+                                    <input className={`${inputClass} pl-11`} name="email" type="email" value={formik.values.email} onChange={formik.handleChange} onBlur={formik.handleBlur} placeholder="admin@implascan.com" aria-invalid={Boolean(formik.touched.email && formik.errors.email)} />
                                 </div>
+                                {formik.touched.email && formik.errors.email && <p className="mt-1 text-xs font-medium text-red-600">{formik.errors.email}</p>}
                             </label>
                             <label className="block">
                                 <span className="mb-2 block text-sm font-semibold text-slate-700">Password</span>
