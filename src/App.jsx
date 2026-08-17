@@ -1,11 +1,10 @@
-import React, { Suspense, lazy, useEffect } from 'react';
+import React, { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Navigate, Route, Routes } from 'react-router-dom';
 import { GlobalProvider, useGlobal } from './context/GlobalContext';
 import DashboardLayout from './components/layout/DashboardLayout';
 import { ToastContainer } from 'react-toastify';
 import { ContextProviderClass } from './ContextProvider';
 import { EmployeeProvider, useEmployee } from './context/EmployeeContext';
-import './employee/employee.css';
 import EmployeeLayout from './employee/EmployeeLayout';
 import EmployeeAuth from './employee/pages/EmployeeAuth';
 import EmployeeDashboard from './employee/pages/EmployeeDashboard';
@@ -14,6 +13,7 @@ import EmployeeMyCases from './employee/pages/EmployeeMyCases';
 import EmployeeLibrary from './employee/pages/EmployeeLibrary';
 import EmployeeSubscription from './employee/pages/EmployeeSubscription';
 import EmployeeSettings from './employee/pages/EmployeeSettings';
+import { DEMO_MODE } from './config/demoMode';
 
 const Login = lazy(() => import('./pages/Login'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
@@ -36,11 +36,12 @@ const LoadingFallback = () => (
 
 const AdminAppRouter = () => {
   const { auth } = useGlobal();
+  const canAccessApp = DEMO_MODE || auth.isAuthenticated;
 
   return (
     <Suspense fallback={<LoadingFallback />}>
       <Routes>
-        {!auth.isAuthenticated ? (
+        {!canAccessApp ? (
           <>
             <Route path="/login" element={<Login />} />
             <Route path="*" element={<Navigate to="/login" replace />} />
@@ -68,11 +69,12 @@ const AdminAppRouter = () => {
 
 const EmployeeAppRouter = () => {
   const { employeeAuth } = useEmployee();
+  const canAccessApp = DEMO_MODE || employeeAuth.isAuthenticated;
 
   return (
     <Suspense fallback={<LoadingFallback />}>
       <Routes>
-        {!employeeAuth.isAuthenticated ? (
+        {!canAccessApp ? (
           <>
             <Route path="/login" element={<EmployeeAuth />} />
             <Route path="*" element={<Navigate to="/login" replace />} />
@@ -99,13 +101,6 @@ const EmployeeAppRouter = () => {
 
 const RootRouter = () => {
   const isAdminHost = typeof window !== 'undefined' && window.location.hostname.startsWith('admin.');
-
-  useEffect(() => {
-    document.body.classList.toggle('employee-theme', !isAdminHost);
-    return () => {
-      document.body.classList.remove('employee-theme');
-    };
-  }, [isAdminHost]);
 
   if (isAdminHost) {
     return (

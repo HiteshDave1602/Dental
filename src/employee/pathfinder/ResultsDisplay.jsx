@@ -268,7 +268,7 @@ export default function ResultsDisplay({
                 Download All Results
               </Button>
 
-              {job.calculateAngles?.reference_plane_cube_path && (
+              {/* {job.calculateAngles?.reference_plane_cube_path && (
                 <Button
                   onClick={() => saveAs(fileUrl(job.calculateAngles.reference_plane_cube_path), 'calculated_reference_plane_cube.stl')}
                   variant="outlined"
@@ -282,9 +282,9 @@ export default function ResultsDisplay({
                 >
                   Download Plane Cube
                 </Button>
-              )}
+              )} */}
 
-              {job.calculateAngles?.insertion_axis_cube_and_analogs_path && (
+              {/* {job.calculateAngles?.insertion_axis_cube_and_analogs_path && (
                 <Button
                   onClick={() => saveAs(fileUrl(job.calculateAngles.insertion_axis_cube_and_analogs_path), 'insertion_axis_cube_and_analogs.stl')}
                   variant="outlined"
@@ -298,7 +298,7 @@ export default function ResultsDisplay({
                 >
                   Download Cube + Analogs
                 </Button>
-              )}
+              )} */}
 
               {!job.calculateAngles?.instance_results && (
                 <Button
@@ -350,7 +350,7 @@ export default function ResultsDisplay({
                 </Button>
               )}
 
-              {job.placeCorrectors?.final_with_correctors_path && (
+              {/* {job.placeCorrectors?.final_with_correctors_path && (
                 <Button
                   onClick={() => saveAs(fileUrl(job.placeCorrectors.final_with_correctors_path), 'final_with_angle_correctors.ply')}
                   variant="outlined"
@@ -364,7 +364,7 @@ export default function ResultsDisplay({
                 >
                   Download Mesh with Correctors
                 </Button>
-              )}
+              )} */}
             </Stack>
           </Stack>
         </CardContent>
@@ -538,7 +538,7 @@ export default function ResultsDisplay({
       )}
 
       {/* Selected Angle Correctors */}
-      {job.placeCorrectors?.instance_correctors && (
+      {/* {job.placeCorrectors?.instance_correctors && (
         <Card elevation={0} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 3 }}>
           <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
             <Stack spacing={1} sx={{ mb: 1 }}>
@@ -580,7 +580,7 @@ export default function ResultsDisplay({
             )}
           </CardContent>
         </Card>
-      )}
+      )} */}
     </Stack>
   );
 }

@@ -1,5 +1,6 @@
 import { createContext, useContext, useMemo } from 'react';
 import { useAuthStore } from '../store/authStore';
+import { DEMO_EMPLOYEE, DEMO_MODE } from '../config/demoMode';
 
 /**
  * EmployeeContext is now a thin wrapper over the Zustand authStore.
@@ -25,10 +26,10 @@ export const EmployeeProvider = ({ children }) => {
   const value = useMemo(
     () => ({
       employeeAuth: {
-        isAuthenticated: Boolean(token),
+        isAuthenticated: DEMO_MODE || Boolean(token),
         token,
       },
-      employeeUser: user ?? { name: '', email: '', plan: 'free' },
+      employeeUser: user ?? (DEMO_MODE ? DEMO_EMPLOYEE : { name: '', email: '', plan: 'free' }),
       setEmployeeSession,
       logoutEmployee: logout,
       updateEmployeeUser: updateUser,

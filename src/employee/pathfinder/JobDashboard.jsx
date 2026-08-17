@@ -1,148 +1,58 @@
 import { useMemo } from 'react';
-import { Box, Card, CardContent, Typography, Stack, Fade, Grow } from '@mui/material';
+import { Box, Card, CardContent, Stack, Typography, Fade } from '@mui/material';
 import { keyframes } from '@mui/system';
 
-const bounce = keyframes`
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-20px); }
-`;
+const orbit = keyframes`from { transform: rotate(0deg); } to { transform: rotate(360deg); }`;
+const orbitReverse = keyframes`from { transform: rotate(360deg); } to { transform: rotate(0deg); }`;
+const scan = keyframes`0%, 100% { transform: translateY(-42px); opacity: 0; } 12%, 88% { opacity: 1; } 50% { transform: translateY(42px); opacity: 1; }`;
+const breathe = keyframes`0%, 100% { transform: scale(0.94); opacity: 0.35; } 50% { transform: scale(1.06); opacity: 0.8; }`;
+const shimmer = keyframes`0% { transform: translateX(-110%); } 100% { transform: translateX(220%); }`;
 
-const pulse = keyframes`
-  0%, 100% { transform: scale(1); opacity: 1; }
-  50% { transform: scale(1.1); opacity: 0.8; }
-`;
-
-const rotate = keyframes`
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-`;
-
-const wave = keyframes`
-  0%, 100% { transform: translateX(0); }
-  25% { transform: translateX(-10px); }
-  75% { transform: translateX(10px); }
-`;
+const stages = ['Preparing scan', 'Reading geometry', 'Aligning surfaces', 'Final review'];
 
 export default function JobDashboard({ events }) {
-  const doneEvent = useMemo(() => {
-    const safeEvents = Array.isArray(events) ? events : [];
-    return safeEvents.find(e => e.type === 'done');
-  }, [events]);
-
   const safeEvents = Array.isArray(events) ? events : [];
-  const progress = safeEvents.filter(e => e.type === 'status').length;
+  const doneEvent = useMemo(() => safeEvents.find((event) => event.type === 'done'), [safeEvents]);
+  const progress = Math.min(safeEvents.filter((event) => event.type === 'status').length, stages.length);
+  const activeStage = Math.max(0, progress - 1);
 
-  // Fun messages for different stages
-  const getPlayfulMessage = () => {
-    if (doneEvent) return '✨ Analysis Complete!';
-    if (progress >= 4) return '🔍 Finalizing alignment matches...';
-    if (progress >= 3) return '🎯 Refining precision alignment...';
-    if (progress >= 2) return '🧮 Analyzing mesh geometry...';
-    if (progress >= 1) return '🚀 Processing your meshes...';
-    return '⚡ Initializing analysis...';
+  const getStatusMessage = () => {
+    if (progress >= 4) return 'Completing your case review';
+    if (progress >= 3) return 'Refining the surface alignment';
+    if (progress >= 2) return 'Reading scan geometry';
+    if (progress >= 1) return 'Processing your scan data';
+    return 'Preparing your digital scan';
   };
 
-  if (doneEvent && doneEvent.status === 'completed') {
-    return null;
-  }
+  if (doneEvent?.status === 'completed') return null;
 
   return (
-    <Fade in timeout={500}>
-      <Card
-        elevation={0}
-        sx={{
-          background: 'linear-gradient(135deg, rgba(33, 150, 243, 0.08) 0%, rgba(156, 39, 176, 0.08) 100%)',
-          border: '1px solid',
-          borderColor: 'divider',
-          borderRadius: 4,
-          overflow: 'hidden',
-        }}
-      >
-        <CardContent sx={{ p: { xs: 3, sm: 4 } }}>
-          <Stack spacing={{ xs: 3, sm: 4 }} alignItems="center">
-            {/* Animated loader circles */}
-            <Box sx={{ position: 'relative', width: { xs: 100, sm: 120 }, height: { xs: 100, sm: 120 } }}>
-              {/* Outer rotating circle */}
-              <Box
-                sx={{
-                  position: 'absolute',
-                  width: { xs: 100, sm: 120 },
-                  height: { xs: 100, sm: 120 },
-                  borderRadius: '50%',
-                  border: { xs: '3px solid', sm: '4px solid' },
-                  borderColor: 'primary.main',
-                  borderTopColor: 'transparent',
-                  animation: `${rotate} 1.5s linear infinite`,
-                }}
-              />
-              {/* Middle pulsing circle */}
-              <Box
-                sx={{
-                  position: 'absolute',
-                  top: { xs: 12, sm: 15 },
-                  left: { xs: 12, sm: 15 },
-                  width: { xs: 76, sm: 90 },
-                  height: { xs: 76, sm: 90 },
-                  borderRadius: '50%',
-                  bgcolor: 'primary.dark',
-                  animation: `${pulse} 2s ease-in-out infinite`,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                {/* Inner bouncing tooth icon */}
-                <Typography
-                  sx={{
-                    fontSize: { xs: '2.5rem', sm: '3rem' },
-                    animation: `${bounce} 1s ease-in-out infinite`,
-                  }}
-                >
-                  🦷
-                </Typography>
+    <Fade in timeout={450}>
+      <Card elevation={0} sx={{ position: 'relative', overflow: 'hidden', borderRadius: { xs: 3, sm: 4 }, color: '#F6FBFE', background: 'linear-gradient(120deg, #071433 0%, #0A2472 52%, #0C1C4D 100%)', border: '1px solid rgba(156, 213, 255, 0.28)', boxShadow: '0 18px 42px rgba(7, 42, 114, 0.26)', '&::before': { content: '""', position: 'absolute', inset: 0, pointerEvents: 'none', background: 'radial-gradient(circle at 12% 22%, rgba(106, 176, 227, 0.24), transparent 30%), radial-gradient(circle at 85% 85%, rgba(7, 42, 200, 0.42), transparent 34%)' } }}>
+        <CardContent sx={{ position: 'relative', p: { xs: 3, sm: 5 } }}>
+          <Stack direction={{ xs: 'column', md: 'row' }} spacing={{ xs: 4, md: 6 }} alignItems="center">
+            <Box aria-hidden="true" sx={{ position: 'relative', width: { xs: 172, sm: 204 }, height: { xs: 172, sm: 204 }, flexShrink: 0 }}>
+              <Box sx={{ position: 'absolute', inset: 0, borderRadius: '50%', border: '1px solid rgba(156, 213, 255, 0.3)', animation: `${breathe} 3s ease-in-out infinite` }} />
+              <Box sx={{ position: 'absolute', inset: 12, borderRadius: '50%', border: '1px dashed rgba(156, 213, 255, 0.54)', animation: `${orbit} 16s linear infinite` }}><Box sx={{ position: 'absolute', top: -4, left: '50%', width: 8, height: 8, borderRadius: '50%', bgcolor: '#9CD5FF', boxShadow: '0 0 16px #9CD5FF', transform: 'translateX(-50%)' }} /></Box>
+              <Box sx={{ position: 'absolute', inset: 27, borderRadius: '50%', border: '1px solid rgba(106, 176, 227, 0.46)', animation: `${orbitReverse} 10s linear infinite` }} />
+              <Box sx={{ position: 'absolute', inset: 43, overflow: 'hidden', borderRadius: '50%', background: 'radial-gradient(circle at 35% 28%, #2079d1, #072AC8 58%, #07194f)', border: '6px solid rgba(246, 251, 254, 0.92)', boxShadow: 'inset 0 0 28px rgba(156, 213, 255, 0.5), 0 0 0 6px rgba(156, 213, 255, 0.1), 0 12px 30px rgba(0, 0, 0, 0.35)' }}>
+                <Typography component="span" sx={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', fontSize: { xs: '3.1rem', sm: '3.7rem' }, filter: 'drop-shadow(0 5px 7px rgba(0,0,0,.3))' }}>&#129463;</Typography>
+                <Box sx={{ position: 'absolute', left: 0, right: 0, height: 2, bgcolor: '#C1E5FF', boxShadow: '0 0 15px 4px rgba(156, 213, 255, 0.7)', animation: `${scan} 2.6s ease-in-out infinite` }} />
               </Box>
             </Box>
-
-            {/* Message */}
-            <Grow in timeout={800}>
-              <Box sx={{ textAlign: 'center', px: { xs: 2, sm: 0 } }}>
-                <Typography
-                  variant="h5"
-                  gutterBottom
-                  sx={{
-                    fontWeight: 700,
-                    fontSize: { xs: '1.25rem', sm: '1.5rem' },
-                    background: 'linear-gradient(45deg, #2196F3 30%, #9C27B0 90%)',
-                    backgroundClip: 'text',
-                    WebkitBackgroundClip: 'text',
-                    WebkitTextFillColor: 'transparent',
-                    animation: `${wave} 3s ease-in-out infinite`,
-                  }}
-                >
-                  {getPlayfulMessage()}
-                </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.8rem', sm: '0.875rem' } }}>
-                  This usually takes just a few moments
-                </Typography>
-              </Box>
-            </Grow>
-
-            {/* Progress dots */}
-            <Stack direction="row" spacing={{ xs: 1, sm: 1.5 }}>
-              {[1, 2, 3, 4].map((dot, index) => (
-                <Box
-                  key={dot}
-                  sx={{
-                    width: { xs: 10, sm: 12 },
-                    height: { xs: 10, sm: 12 },
-                    borderRadius: '50%',
-                    bgcolor: progress >= index + 1 ? 'primary.main' : 'action.disabled',
-                    transition: 'all 0.5s ease',
-                    animation: progress === index + 1 ? `${pulse} 1s ease-in-out infinite` : 'none',
-                  }}
-                />
-              ))}
-            </Stack>
+            <Box sx={{ width: '100%', maxWidth: 590, textAlign: { xs: 'center', md: 'left' } }}>
+              <Typography sx={{ color: '#9CD5FF', fontSize: '0.7rem', fontWeight: 800, letterSpacing: '0.16em', textTransform: 'uppercase' }}>Case analysis in progress</Typography>
+              <Typography variant="h4" sx={{ mt: 1, fontWeight: 800, letterSpacing: '-0.035em', fontSize: { xs: '1.7rem', sm: '2.15rem' } }}>{getStatusMessage()}</Typography>
+              <Typography sx={{ mt: 1.25, color: 'rgba(246, 251, 254, 0.72)', fontSize: { xs: '0.9rem', sm: '1rem' } }}>We’re building a precise 3D view of your patient’s scan. This usually takes just a few moments.</Typography>
+              <Box sx={{ mt: 4, borderRadius: 2, overflow: 'hidden', bgcolor: 'rgba(1, 13, 42, 0.38)', border: '1px solid rgba(156, 213, 255, 0.18)' }}><Box sx={{ height: 7, width: `${Math.max(12, (progress / stages.length) * 100)}%`, borderRadius: 'inherit', position: 'relative', overflow: 'hidden', background: 'linear-gradient(90deg, #159FE8, #9CD5FF)' }}><Box sx={{ position: 'absolute', inset: 0, width: '38%', background: 'linear-gradient(90deg, transparent, rgba(255,255,255,.72), transparent)', animation: `${shimmer} 1.8s linear infinite` }} /></Box></Box>
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.25} sx={{ mt: 2.25, justifyContent: { xs: 'center', md: 'flex-start' }, flexWrap: 'wrap' }}>
+                {stages.map((stage, index) => {
+                  const isComplete = progress > index;
+                  const isActive = index === activeStage;
+                  return <Stack key={stage} direction="row" spacing={0.8} alignItems="center" sx={{ color: isComplete || isActive ? '#F6FBFE' : 'rgba(246, 251, 254, 0.45)' }}><Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: isComplete ? '#9CD5FF' : 'rgba(156, 213, 255, 0.28)', boxShadow: isActive ? '0 0 0 5px rgba(156,213,255,.12), 0 0 12px #9CD5FF' : 'none' }} /><Typography sx={{ fontSize: '0.75rem', fontWeight: isActive ? 700 : 500 }}>{stage}</Typography></Stack>;
+                })}
+              </Stack>
+            </Box>
           </Stack>
         </CardContent>
       </Card>

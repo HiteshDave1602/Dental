@@ -1,5 +1,7 @@
 import axios from 'axios';
 import { toast } from 'react-toastify';
+import { DEMO_MODE } from '../config/demoMode';
+import { useAuthStore } from '../store/authStore';
 
 const API_BASE_URL =
     import.meta.env.VITE_ENV === 'PROD'
@@ -90,8 +92,15 @@ apiClient.interceptors.request.use(
 // Previously this only showed a toast, leaving them on an authenticated-looking
 // shell where every subsequent request failed.
 const handleUnauthorized = (tokenKey, loginPath) => (error) => {
-    if (error.response?.status === 401) {
-        sessionStorage.removeItem(tokenKey);
+    if (!DEMO_MODE && error.response?.status === 401) {
+        // Employee authentication is held in the Zustand store as well as
+        // sessionStorage. Clearing only sessionStorage left the router thinking
+        // it was authenticated and caused a login/dashboard redirect loop.
+        if (tokenKey === EMPLOYEE_TOKEN_KEY) {
+            useAuthStore.getState().logout();
+        } else {
+            sessionStorage.removeItem(tokenKey);
+        }
         notifyError('Session expired. Please login again.');
         if (!window.location.pathname.startsWith(loginPath)) {
             window.location.assign(loginPath);

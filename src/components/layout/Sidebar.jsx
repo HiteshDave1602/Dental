@@ -14,6 +14,7 @@ import {
 import { cn } from '../../utils/utils';
 import { useGlobal } from '../../context/GlobalContext';
 import { useContextProvider } from '../../ContextProvider';
+import pathfinderLogo from '../../assets/images/MY PATHFINDER LOGO.JPG.jpeg';
 
 const Sidebar = ({ isOpen, onClose }) => {
     const location = useLocation();
@@ -39,9 +40,7 @@ const Sidebar = ({ isOpen, onClose }) => {
             )}>
                 <div className="p-8 flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-[#0d9488] rounded-xl flex items-center justify-center text-white shadow-lg shadow-teal-500/20">
-                            <Microscope size={22} />
-                        </div>
+                        <img src={pathfinderLogo} alt="My Pathfinder" className="h-12 w-12 rounded-xl bg-white object-contain p-0.5 shadow-lg shadow-teal-500/20" />
                         <div>
                             <h1 className="text-xl font-bold text-slate-900 tracking-tight leading-none">Path Finder</h1>
                             <span className="text-[10px] font-bold text-clinical-teal uppercase tracking-widest mt-1 block">Admin Portal</span>

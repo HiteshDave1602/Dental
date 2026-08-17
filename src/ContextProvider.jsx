@@ -1,10 +1,11 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import api from './Script/api';
+import { DEMO_ADMIN, DEMO_MODE } from './config/demoMode';
 
 export const ContextProvider = createContext();
 
 export const ContextProviderClass = ({ children }) => {
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState(DEMO_MODE ? DEMO_ADMIN : null);
   const [adminToken, setAdminToken] = useState(null);
   const [error, setError] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -22,6 +23,12 @@ export const ContextProviderClass = ({ children }) => {
   });
 
   const refreshCurrentAdmin = async (token = adminToken) => {
+    if (DEMO_MODE) {
+      setUser(DEMO_ADMIN);
+      setError(null);
+      return DEMO_ADMIN;
+    }
+
     if (!token) {
       setUser(null);
       return null;
@@ -44,7 +51,9 @@ export const ContextProviderClass = ({ children }) => {
   };
 
   useEffect(() => {
-    refreshCurrentAdmin(adminToken);
+    if (!DEMO_MODE) {
+      refreshCurrentAdmin(adminToken);
+    }
   }, [adminToken]);
 
   return (

@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { DEMO_ADMIN, DEMO_MODE } from '../config/demoMode';
 
 const GlobalContext = createContext();
 
@@ -8,8 +9,8 @@ const GlobalContext = createContext();
 const getStoredAuth = () => {
     const token = sessionStorage.getItem('token');
     return {
-        auth: { isAuthenticated: Boolean(token), token: token || null },
-        user: { name: '', role: '' },
+        auth: { isAuthenticated: DEMO_MODE || Boolean(token), token: token || null },
+        user: DEMO_MODE ? DEMO_ADMIN : { name: '', role: '' },
     };
 };
 
@@ -42,8 +43,8 @@ export const GlobalProvider = ({ children }) => {
     }, []);
 
     const logout = () => {
-        setAuth({ isAuthenticated: false, token: null });
-        setUser({ name: 'Dr. Jane Smith', role: 'Main Dentist' });
+        setAuth({ isAuthenticated: DEMO_MODE, token: null });
+        setUser(DEMO_MODE ? DEMO_ADMIN : { name: '', role: '' });
         sessionStorage.removeItem('user');
         localStorage.removeItem('user');
     };
