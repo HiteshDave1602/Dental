@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import { Menu, X } from 'lucide-react';
 import Sidebar from './Sidebar';
+import pathfinderLogo from '../../assets/images/MY PATHFINDER LOGO.JPG.jpeg';
 
 const DashboardLayout = () => {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -22,8 +23,8 @@ const DashboardLayout = () => {
                 {/* Mobile Header */}
                 <header className="lg:hidden h-16 bg-white border-b border-slate-100 px-6 flex items-center justify-between sticky top-0 z-20">
                     <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 bg-[#0d9488] rounded-lg"></div>
-                        <span className="font-bold text-slate-800">MedSaaS</span>
+                        <img src={pathfinderLogo} alt="My Pathfinder" className="h-9 w-9 rounded-lg bg-white object-contain p-0.5" />
+                        <span className="font-bold text-slate-800">My Pathfinder</span>
                     </div>
                     <button
                         onClick={() => setIsSidebarOpen(true)}

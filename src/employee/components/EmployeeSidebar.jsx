@@ -1,7 +1,6 @@
 import {
   BadgePlus,
   Bell,
-  BriefcaseMedical,
   ChevronLeft,
   ChevronRight,
   FolderKanban,
@@ -9,12 +8,12 @@ import {
   Library,
   LogOut,
   Settings,
-  Sparkles,
   WalletCards,
 } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '../../utils/utils';
 import { useEmployee } from '../../context/EmployeeContext';
+import pathfinderLogo from '../../assets/images/MY PATHFINDER LOGO.JPG.jpeg';
 
 const menuGroups = [
   {
@@ -74,9 +73,9 @@ const EmployeeSidebar = ({ collapsed, onToggle }) => {
           <Link
             to="/dashboard"
             aria-label="MyPathFinder home"
-            className="grid h-10 w-10 place-content-center rounded-xl text-white transition-colors hover:bg-white/20"
+            className="grid h-10 w-10 place-content-center overflow-hidden rounded-xl bg-white transition-colors hover:bg-white/90"
           >
-            <Sparkles size={19} />
+            <img src={pathfinderLogo} alt="" className="h-full w-full object-contain p-0.5" />
           </Link>
 
           <div className="mt-5 w-full flex-1">
@@ -144,9 +143,7 @@ const EmployeeSidebar = ({ collapsed, onToggle }) => {
         )}
       >
         <div className="mb-5 flex items-center gap-3 px-1">
-          <div className="grid h-10 w-10 shrink-0 place-content-center rounded-full bg-white/15 text-white shadow-md shadow-black/10">
-            <BriefcaseMedical size={18} />
-          </div>
+          <img src={pathfinderLogo} alt="My Pathfinder" className="h-11 w-11 shrink-0 rounded-xl bg-white object-contain p-0.5 shadow-md shadow-black/10" />
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-bold text-white">{displayName}</p>
             <p className="truncate text-[10px] text-white/65">{displayEmail}</p>

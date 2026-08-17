@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Navigate } from 'react-router-dom';
-import { ArrowRight, Eye, EyeOff, Lock, Mail, ShieldCheck, UserRound } from 'lucide-react';
+import { ArrowRight, Eye, EyeOff, Lock, Mail, UserRound } from 'lucide-react';
 import { useEmployee } from '../../context/EmployeeContext';
 import api, { notifyError, notifySuccess } from '../../Script/api';
 import alignmentVideo from '../../assets/Untitled design.mp4';
+import pathfinderLogo from '../../assets/images/MY PATHFINDER LOGO.JPG.jpeg';
 
 const EmployeeAuth = () => {
   const [tab, setTab] = useState('login');
@@ -85,6 +86,7 @@ const EmployeeAuth = () => {
           <div className="relative h-full">
             <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
               <div className="max-w-xs">
+              <img src={pathfinderLogo} alt="My Pathfinder" className="mx-auto mb-5 h-20 w-20 rounded-2xl bg-white/95 object-contain p-1 shadow-lg" />
               <p className="mb-3 text-sm font-semibold text-[#c1e5ff]">{isRegistering ? 'Already a member?' : 'New to MyPathFinder?'}</p>
               <h1 className="employee-heading text-4xl font-bold leading-tight tracking-[-0.04em]">{isRegistering ? 'Welcome back.' : 'The clarity to plan every smile.'}</h1>
               <p className="mt-4 text-sm leading-6 text-white/80">{isRegistering ? 'Sign in to continue your secure dental planning workflow.' : 'Create your account and turn every scan into a confident clinical decision.'}</p>
@@ -99,8 +101,7 @@ const EmployeeAuth = () => {
         <section className={`relative z-10 flex items-center justify-center px-7 text-[#102e4a] will-change-transform sm:px-12 md:absolute md:inset-y-0 md:right-0 md:w-1/2 md:px-14 md:transition-transform md:duration-[1000ms] md:[transition-timing-function:cubic-bezier(0.65,0,0.35,1)] motion-reduce:transition-none ${isRegistering ? 'py-5 md:py-6 md:-translate-x-full' : 'py-10 md:translate-x-0'}`}>
           <div className="w-full max-w-sm">
             <div className={isRegistering ? 'mb-4' : 'mb-8'}>
-              <div className="mb-5 flex items-center justify-between">
-                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#e8f6ff] text-[#1746c7]"><ShieldCheck size={21} /></span>
+              <div className="mb-5 flex items-center justify-end">
                 <span className="text-xs font-semibold text-[#57718a]">Secure clinical portal</span>
               </div>
               <h2 className={`employee-heading font-bold tracking-[-0.035em] ${isRegistering ? 'text-[28px]' : 'text-3xl'}`}>{isRegistering ? 'Create your access' : 'Welcome back'}</h2>

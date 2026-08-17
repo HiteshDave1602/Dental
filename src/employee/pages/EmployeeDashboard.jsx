@@ -11,9 +11,9 @@ import { useNavigate } from 'react-router-dom';
 import api from '../../Script/api';
 
 const STATUS_CLASS = {
-  completed: 'bg-[#6ab0e3] text-white border-[#6ab0e3]',
+  completed: 'bg-[#159FE8] text-white border-[#159FE8] shadow-sm shadow-[#159FE8]/40',
   processing: 'bg-[#9cd5ff]/35 text-[#12344D] border-[#6ab0e3]/55',
-  pending: 'bg-[#c1e5ff]/60 text-[#12344D] border-[#9cd5ff]',
+  pending: 'bg-[#DDF4FF] text-[#075985] border-[#67C8FF] shadow-sm shadow-[#67C8FF]/35',
   failed: 'bg-[#12344D] text-white border-[#12344D]',
   deleted: 'bg-[#9cd5ff]/20 text-[#12344D]/65 border-[#9cd5ff]/50',
 };
