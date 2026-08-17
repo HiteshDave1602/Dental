@@ -11,7 +11,7 @@ const titleByPath = {
   '/dashboard': 'Dashboard',
   '/new-case': 'New Case',
   '/my-cases': 'My Cases',
-  '/library': 'Library',
+  // '/library': 'Library',
   '/subscription': 'Subscription & Billing',
   '/settings': 'Settings',
 };

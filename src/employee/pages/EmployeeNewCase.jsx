@@ -166,7 +166,9 @@ const EmployeeNewCase = () => {
     return Object.keys(errors).length === 0;
   }, [patient]);
 
-  const canGoToStep3 = Boolean(upload) && selectedTeeth.length > 0 && allAssigned;
+  // Library selection is currently bypassed in this flow, so a scan upload is
+  // the only requirement before continuing to the Pathfinder review step.
+  const canGoToStep3 = Boolean(upload);
 
   const patientScanUrl = caseData?.patient_scan_url
     ? `${RESOLVED_BASE_URL}${caseData.patient_scan_url}`
@@ -528,7 +530,7 @@ const EmployeeNewCase = () => {
                 <div className="rounded-xl border border-[#9cd5ff]/70 bg-[#f6fbfe] h-[380px] relative">
                   <span className="absolute top-3 left-3 text-xs px-2 py-1 rounded-full border border-[#6ab0e3]/50 bg-[#c1e5ff] text-[#0a2472]">3D Scan Preview</span>
                   <div className="absolute right-3 top-3 z-10 flex gap-2 text-xs">
-                    {['Solid', 'Wireframe'].map((mode) => (
+                    {/* {['Solid', 'Wireframe'].map((mode) => (
                       <button
                         key={mode}
                         type="button"
@@ -537,8 +539,8 @@ const EmployeeNewCase = () => {
                       >
                         {mode}
                       </button>
-                    ))}
-                    <span className="w-px bg-[#9cd5ff] mx-0.5" />
+                    ))} */}
+                    {/* <span className="w-px bg-[#9cd5ff] mx-0.5" /> */}
                     {['Perspective', 'Orthographic'].map((mode) => (
                       <button
                         key={mode}
@@ -560,12 +562,12 @@ const EmployeeNewCase = () => {
           {/* Teeth selection & library assignment (only shown once scan is uploaded) */}
           {upload && (
             <article className="space-y-4">
-              <div className="glass-card p-4 border-l-4 border-[#072ac8]">
+              {/* <div className="glass-card p-4 border-l-4 border-[#072ac8]">
                 <h3 className="employee-heading text-[#12344D]">Assign Implant Library to Teeth</h3>
                 <p className="text-sm text-[#12344D]/70 mt-1">
                   Click a tooth, choose a brand, then select the matching library entry.
                 </p>
-              </div>
+              </div> */}
 
               <ToothChart
                 selectedTeeth={selectedTeeth}
@@ -790,7 +792,7 @@ const EmployeeNewCase = () => {
               type="button"
               disabled={!canGoToStep3}
               onClick={handleNextFromStep2}
-              title={!canGoToStep3 ? 'Upload scan and assign all teeth to continue' : ''}
+              title={!canGoToStep3 ? 'Upload a scan to continue' : ''}
               className="h-10 px-5 rounded-full bg-[#072ac8] text-white hover:bg-[#0a2472] disabled:opacity-70 disabled:cursor-not-allowed inline-flex items-center gap-2"
             >
               {!canGoToStep3 ? <Lock size={14} /> : <FileUp size={14} />}

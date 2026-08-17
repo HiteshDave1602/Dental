@@ -306,9 +306,11 @@ function PathfinderApp({ caseId, onComplete }) {
     <ThemeProvider theme={theme}>
       <Box
         sx={{
-          bgcolor: 'background.default',
+          // Keep the loading-screen surround aligned with the application's
+          // light clinical-blue surface instead of the Pathfinder dark theme.
+          bgcolor: '#F0F9FF',
           border: '1px solid',
-          borderColor: 'divider',
+          borderColor: '#C1E5FF',
           borderRadius: 3,
           py: { xs: 3, sm: 4 },
           overflow: 'hidden',

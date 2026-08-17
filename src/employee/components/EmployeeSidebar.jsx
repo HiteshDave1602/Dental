@@ -1,11 +1,10 @@
 import {
   BadgePlus,
-  Bell,
   ChevronLeft,
   ChevronRight,
   FolderKanban,
   LayoutDashboard,
-  Library,
+  // Library,
   LogOut,
   Settings,
   WalletCards,
@@ -22,7 +21,7 @@ const menuGroups = [
       { label: 'Dashboard', to: '/dashboard', icon: LayoutDashboard },
       { label: 'New Case', to: '/new-case', icon: BadgePlus },
       { label: 'My Cases', to: '/my-cases', icon: FolderKanban },
-      { label: 'Library', to: '/library', icon: Library },
+      // { label: 'Library', to: '/library', icon: Library },
     ],
   },
   {
@@ -38,7 +37,7 @@ const railItems = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/new-case', icon: BadgePlus, label: 'New Case' },
   { to: '/my-cases', icon: FolderKanban, label: 'My Cases' },
-  { to: '/library', icon: Library, label: 'Library' },
+  // { to: '/library', icon: Library, label: 'Library' },
   { to: '/subscription', icon: WalletCards, label: 'Subscription' },
 ];
 
@@ -47,9 +46,6 @@ const EmployeeSidebar = ({ collapsed, onToggle }) => {
   const { employeeUser, logoutEmployee } = useEmployee();
   const displayName = employeeUser?.name || employeeUser?.email || 'User';
   const displayEmail = employeeUser?.email || 'Dental professional';
-  const displayPlan = employeeUser?.plan
-    ? employeeUser.plan.charAt(0).toUpperCase() + employeeUser.plan.slice(1).toLowerCase()
-    : 'Free';
 
   return (
     <aside
@@ -199,13 +195,6 @@ const EmployeeSidebar = ({ collapsed, onToggle }) => {
         </div>
 
         <div className="mt-auto border-t border-white/15 pt-3">
-          <div className="mb-2 flex items-center justify-between rounded-xl border border-white/25 bg-white/15 px-3 py-2.5">
-            <div>
-              <p className="text-[10px] font-medium text-white/60">Current plan</p>
-              <p className="text-xs font-bold text-white">{displayPlan}</p>
-            </div>
-            <Bell size={15} className="text-white/75" />
-          </div>
           <button
             type="button"
             onClick={logoutEmployee}
