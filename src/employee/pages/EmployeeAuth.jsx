@@ -90,9 +90,9 @@ const EmployeeAuth = () => {
               <p className="mb-3 text-sm font-semibold text-[#c1e5ff]">{isRegistering ? 'Already a member?' : 'New to MyPathFinder?'}</p>
               <h1 className="employee-heading text-4xl font-bold leading-tight tracking-[-0.04em]">{isRegistering ? 'Welcome back.' : 'The clarity to plan every smile.'}</h1>
               <p className="mt-4 text-sm leading-6 text-white/80">{isRegistering ? 'Sign in to continue your secure dental planning workflow.' : 'Create your account and turn every scan into a confident clinical decision.'}</p>
-              <button type="button" onClick={() => changeTab(isRegistering ? 'login' : 'register')} className="mt-7 rounded-xl border border-white/75 px-6 py-2.5 text-sm font-bold text-white transition hover:bg-white hover:text-[#123cc7] focus:outline-none focus:ring-4 focus:ring-white/30">
+              {/* <button type="button" onClick={() => changeTab(isRegistering ? 'login' : 'register')} className="mt-7 rounded-xl border border-white/75 px-6 py-2.5 text-sm font-bold text-white transition hover:bg-white hover:text-[#123cc7] focus:outline-none focus:ring-4 focus:ring-white/30">
                 {isRegistering ? 'Login' : 'Register'}
-              </button>
+              </button> */}
               </div>
             </div>
           </div>
@@ -116,7 +116,7 @@ const EmployeeAuth = () => {
               {!isRegistering && <div className="flex items-center justify-between pt-1 text-sm text-[#57718a]"><label className="flex items-center gap-2"><input type="checkbox" className="h-4 w-4 rounded border-[#b6d8ef] text-[#123cc7] focus:ring-[#73bfed]" />Remember me</label><button type="button" className="font-bold text-[#123cc7] hover:text-[#0b2b86]">Forgot password?</button></div>}
               <button type="submit" disabled={(isRegistering && !canRegister) || loading} className="group flex h-[52px] w-full items-center justify-center gap-2 rounded-xl bg-[linear-gradient(110deg,#123cc7,#1359d4)] px-5 py-3 font-bold text-white shadow-[0_14px_26px_rgba(18,60,199,0.27)] transition hover:-translate-y-0.5 disabled:opacity-40"><span>{loading ? 'Please wait...' : isRegistering ? 'Create account' : 'Sign in'}</span><ArrowRight size={18} className="transition-transform group-hover:translate-x-1" /></button>
             </form>
-            <p className={`${isRegistering ? 'mt-4' : 'mt-7'} text-center text-sm text-[#57718a]`}>{isRegistering ? 'Already have an account?' : "Don't have an account?"} <button type="button" onClick={() => changeTab(isRegistering ? 'login' : 'register')} className="font-bold text-[#123cc7] hover:underline">{isRegistering ? 'Login' : 'Register'}</button></p>
+            <p className={`${isRegistering ? 'mt-4' : 'mt-7'} text-center text-sm text-[#57718a]`}>{isRegistering ? 'Already have an account?' : ""} <button type="button" onClick={() => changeTab(isRegistering ? 'login' : 'register')} className="font-bold text-[#123cc7] hover:underline">{isRegistering ? 'Login' : ''}</button></p>
           </div>
         </section>
       </section>

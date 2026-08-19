@@ -24,6 +24,9 @@ import ResultsDisplay from './ResultsDisplay';
 import Viewer3D from './Viewer3D';
 import theme from './theme';
 
+const READY_STATUSES = new Set(['completed', 'awaiting_review']);
+const FAILED_STATUSES = new Set(['failed', 'error']);
+
 // The scan-body alignment review, for one case.
 //
 // Originally ported from a standalone app, where it owned the whole lifecycle:
@@ -86,7 +89,7 @@ function PathfinderApp({ caseId, onComplete }) {
       try {
         const state = await loadState();
         if (cancelled) return;
-        if (state?.status === 'aligning') {
+        if (state?.job_id && !READY_STATUSES.has(state?.status) && !FAILED_STATUSES.has(state?.status)) {
           timer = setTimeout(tick, 4000);
         }
       } catch (e) {
@@ -126,7 +129,7 @@ function PathfinderApp({ caseId, onComplete }) {
   };
 
   const handleCalculateAngles = useCallback(async () => {
-    if (!caseId || !job || job.status !== 'completed') return;
+    if (!caseId || !job || !READY_STATUSES.has(job.status)) return;
     if (job.calculateAngles || isCalculatingAngles) return;
     setError(null);
     try {
@@ -144,7 +147,7 @@ function PathfinderApp({ caseId, onComplete }) {
   // against the case's teeth server-side, which is what makes them appear in
   // My Cases — the workflow is no longer a detached tool.
   const handlePlaceAngleCorrectors = useCallback(async () => {
-    if (!caseId || !job || job.status !== 'completed') return;
+    if (!caseId || !job || !READY_STATUSES.has(job.status)) return;
     if (!job.calculateAngles?.instance_results) return;
     if (job.placeCorrectors || isPlacingCorrectors) return;
     setError(null);
@@ -341,11 +344,11 @@ function PathfinderApp({ caseId, onComplete }) {
 
           {/* Detection in progress. Alignment takes minutes; the state above
               polls until the engine reports instances. */}
-          {(isLoading || job?.status === 'aligning') && (
+          {(isLoading || (job?.job_id && !READY_STATUSES.has(job?.status) && !FAILED_STATUSES.has(job?.status))) && (
             <JobDashboard events={[{ type: 'status', stage: 'processing', message: 'Detecting implants in the scan' }]} />
           )}
 
-          {job?.status === 'failed' && (
+          {FAILED_STATUSES.has(job?.status) && (
             <Paper elevation={0} sx={{ p: 3, bgcolor: 'error.dark', border: '1px solid', borderColor: 'error.main', borderRadius: 3 }}>
               <Typography color="error.light">
                 Alignment failed: {job.error || 'the compute service could not process this scan.'}
@@ -363,7 +366,7 @@ function PathfinderApp({ caseId, onComplete }) {
           )}
 
           {/* Results Section */}
-          {job?.status === 'completed' && job.summary && (
+          {READY_STATUSES.has(job?.status) && job.summary && (
             <Fade in timeout={800}>
               <Box>
                 {/* Main Viewer and Controls */}

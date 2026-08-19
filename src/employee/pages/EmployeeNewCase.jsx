@@ -89,9 +89,11 @@ const EmployeeNewCase = () => {
   // ── Local (non-persisted) state ───────────────────────────────────────────
   const [patient, setPatient] = useState(patientData);
   const [fieldErrors, setFieldErrors] = useState({});
+  const [creatingCase, setCreatingCase] = useState(false);
 
   const [upload, setUpload] = useState(null);          // File object — can't persist
   const [uploadingToBackend, setUploadingToBackend] = useState(false);
+  const [scanUploadError, setScanUploadError] = useState('');
   const [wireframeMode, setWireframeMode] = useState(false);
   const [orthographicMode, setOrthographicMode] = useState(false);
 
@@ -166,9 +168,9 @@ const EmployeeNewCase = () => {
     return Object.keys(errors).length === 0;
   }, [patient]);
 
-  // Library selection is currently bypassed in this flow, so a scan upload is
-  // the only requirement before continuing to the Pathfinder review step.
-  const canGoToStep3 = Boolean(upload);
+  // The alignment backend needs a real case, mapped library assignments, and
+  // then the scan upload. Uploading first can submit a job with no vendor map.
+  const canGoToStep3 = Boolean(caseId);
 
   const patientScanUrl = caseData?.patient_scan_url
     ? `${RESOLVED_BASE_URL}${caseData.patient_scan_url}`
@@ -197,14 +199,36 @@ const EmployeeNewCase = () => {
     setFieldErrors((e) => ({ ...e, [field]: undefined }));
   }, []);
 
-  const handleStep1Next = () => {
+  const handleStep1Next = async () => {
     const errors = validatePatient(patient);
     if (Object.keys(errors).length) {
       setFieldErrors(errors);
       return;
     }
 
-    setStep(2);
+    if (false && caseId) {
+      setStep(2);
+      api.employee.cases.updateStep(caseId, 2).catch(() => {});
+      return;
+    }
+
+    setCreatingCase(true);
+    try {
+      const res = await api.employee.cases.create({
+        patient_name: patient.fullName.trim(),
+        patient_age: parseInt(patient.age, 10),
+        case_date: patient.caseDate,
+        doctor_notes: patient.notes || null,
+      });
+      const data = res.data?.data || res.data;
+      setCaseCreated(data.id, data.case_reference);
+      await api.employee.cases.updateStep(data.id, 2).catch(() => {});
+      setStep(2);
+    } catch (err) {
+      notifyError(extractErrorMessage(err, 'Failed to create case. Please try again.'));
+    } finally {
+      setCreatingCase(false);
+    }
   };
 
   const onFilePicked = async (event) => {
@@ -220,6 +244,7 @@ const EmployeeNewCase = () => {
       return;
     }
     setUpload(file);
+    setScanUploadError('');
 
     // Upload to backend immediately so we don't have to do it at the end
     if (caseId) {
@@ -419,7 +444,7 @@ const EmployeeNewCase = () => {
   }
 
   return (
-    <div>
+    <div className="pb-20">
       <StepProgress activeStep={currentStep} />
 
       {/* ── STEP 1 — Patient Details ─────────────────────────────────────── */}
@@ -769,31 +794,24 @@ const EmployeeNewCase = () => {
       )}
 
       {/* ── Navigation bar ──────────────────────────────────────────────── */}
-      <div className="mt-6 flex items-center justify-between gap-3">
+      <div className="sticky bottom-0 z-10 -mx-3 mt-6 flex items-center justify-between gap-3 border-t border-[#9cd5ff]/60 bg-[#FCFDF6]/95 px-3 py-3 pr-20 backdrop-blur sm:-mx-4 sm:px-4 sm:pr-24 lg:-mx-6 lg:px-6">
         <button
           type="button"
           onClick={() => goToStep(Math.max(currentStep - 1, 1))}
           disabled={currentStep === 1}
-          className="h-10 px-5 rounded-full border border-[#9cd5ff] text-[#12344D] hover:bg-[#c1e5ff]/40 disabled:opacity-40"
+          className="h-10 shrink-0 px-5 rounded-full border border-[#9cd5ff] text-[#12344D] hover:bg-[#c1e5ff]/40 disabled:opacity-40"
         >
           Back
         </button>
 
         {currentStep === 1 ? null /* Next handled inside step 1 */ : currentStep === 2 ? (
-          <div className="text-right">
-            <div className="text-xs text-[#12344D]/60 mb-1">
-              <span className={upload ? 'text-emerald-600' : 'text-[#12344D]/50'}>☑ Scan uploaded</span>{' · '}
-              <span className={selectedTeeth.length > 0 ? 'text-emerald-600' : 'text-[#12344D]/50'}>☑ Teeth selected</span>{' · '}
-              <span className={allAssigned ? 'text-emerald-600' : 'text-[#12344D]/50'}>
-                ☑ All assigned ({Object.keys(toothAssignments).length}/{selectedTeeth.length})
-              </span>
-            </div>
+          <div className="min-w-0 text-right">
             <button
               type="button"
               disabled={!canGoToStep3}
               onClick={handleNextFromStep2}
               title={!canGoToStep3 ? 'Upload a scan to continue' : ''}
-              className="h-10 px-5 rounded-full bg-[#072ac8] text-white hover:bg-[#0a2472] disabled:opacity-70 disabled:cursor-not-allowed inline-flex items-center gap-2"
+              className="h-10 max-w-full whitespace-nowrap px-5 rounded-full bg-[#072ac8] text-white hover:bg-[#0a2472] disabled:opacity-70 disabled:cursor-not-allowed inline-flex items-center gap-2"
             >
               {!canGoToStep3 ? <Lock size={14} /> : <FileUp size={14} />}
               Next Step →
