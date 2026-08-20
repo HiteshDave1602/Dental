@@ -1,5 +1,6 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import {
+  default as api,
   getAlignmentState, calculateAngles, placeAngleCorrectors, searchAroundPoint,
   deleteInstance, rotateAnalog, setInstanceVendor, listVendors,
   extractErrorMessage,
@@ -24,6 +25,9 @@ import ResultsDisplay from './ResultsDisplay';
 import Viewer3D from './Viewer3D';
 import theme from './theme';
 
+const READY_STATUSES = new Set(['completed', 'awaiting_review']);
+const FAILED_STATUSES = new Set(['failed', 'error']);
+
 // The scan-body alignment review, for one case.
 //
 // Originally ported from a standalone app, where it owned the whole lifecycle:
@@ -33,7 +37,7 @@ import theme from './theme';
 // recorded against the case and a page refresh resumes where the user left
 // off. Wrapped in a scoped MUI ThemeProvider so it themes correctly inside the
 // otherwise-Tailwind employee panel.
-function PathfinderApp({ caseId, onComplete }) {
+function PathfinderApp({ caseId, scanFile, onComplete }) {
   const [job, setJob] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -43,6 +47,7 @@ function PathfinderApp({ caseId, onComplete }) {
   const [isSearching, setIsSearching] = useState(false);
   const [searchFailureReason, setSearchFailureReason] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const scanUploadRetriedRef = useRef(false);
 
   const [visibleInstances, setVisibleInstances] = useState({ scene: true });
   const [hoveredInstance, setHoveredInstance] = useState(null);
@@ -64,16 +69,21 @@ function PathfinderApp({ caseId, onComplete }) {
     return () => { cancelled = true; };
   }, [caseId]);
 
-  // The workflow reads the case's own alignment job rather than creating one:
-  // the scan was uploaded earlier in the wizard and a job was submitted then.
-  // Because state lives server-side, refreshing the page mid-review restores
-  // everything — including angle and corrector results already computed.
+  // The workflow reads the case's own alignment job. If the job is not present
+  // yet and the scan file is still in memory from step 2, retry only the scan
+  // upload here, then reload the job state.
   const loadState = useCallback(async () => {
     if (!caseId) return null;
-    const state = await getAlignmentState(caseId);
+    let state = await getAlignmentState(caseId);
+    if (!state?.job_id && scanFile && !scanUploadRetriedRef.current) {
+      scanUploadRetriedRef.current = true;
+      await api.employee.cases.uploadScan(caseId, scanFile);
+      await api.employee.cases.updateStep(caseId, 3);
+      state = await getAlignmentState(caseId);
+    }
     setJob(state);
     return state;
-  }, [caseId]);
+  }, [caseId, scanFile]);
 
   useEffect(() => {
     if (!caseId) return undefined;
@@ -86,7 +96,7 @@ function PathfinderApp({ caseId, onComplete }) {
       try {
         const state = await loadState();
         if (cancelled) return;
-        if (state?.status === 'aligning') {
+        if (state?.job_id && !READY_STATUSES.has(state?.status) && !FAILED_STATUSES.has(state?.status)) {
           timer = setTimeout(tick, 4000);
         }
       } catch (e) {
@@ -126,7 +136,7 @@ function PathfinderApp({ caseId, onComplete }) {
   };
 
   const handleCalculateAngles = useCallback(async () => {
-    if (!caseId || !job || job.status !== 'completed') return;
+    if (!caseId || !job || !READY_STATUSES.has(job.status)) return;
     if (job.calculateAngles || isCalculatingAngles) return;
     setError(null);
     try {
@@ -144,7 +154,7 @@ function PathfinderApp({ caseId, onComplete }) {
   // against the case's teeth server-side, which is what makes them appear in
   // My Cases — the workflow is no longer a detached tool.
   const handlePlaceAngleCorrectors = useCallback(async () => {
-    if (!caseId || !job || job.status !== 'completed') return;
+    if (!caseId || !job || !READY_STATUSES.has(job.status)) return;
     if (!job.calculateAngles?.instance_results) return;
     if (job.placeCorrectors || isPlacingCorrectors) return;
     setError(null);
@@ -341,11 +351,11 @@ function PathfinderApp({ caseId, onComplete }) {
 
           {/* Detection in progress. Alignment takes minutes; the state above
               polls until the engine reports instances. */}
-          {(isLoading || job?.status === 'aligning') && (
+          {(isLoading || (job?.job_id && !READY_STATUSES.has(job?.status) && !FAILED_STATUSES.has(job?.status))) && (
             <JobDashboard events={[{ type: 'status', stage: 'processing', message: 'Detecting implants in the scan' }]} />
           )}
 
-          {job?.status === 'failed' && (
+          {FAILED_STATUSES.has(job?.status) && (
             <Paper elevation={0} sx={{ p: 3, bgcolor: 'error.dark', border: '1px solid', borderColor: 'error.main', borderRadius: 3 }}>
               <Typography color="error.light">
                 Alignment failed: {job.error || 'the compute service could not process this scan.'}
@@ -356,14 +366,13 @@ function PathfinderApp({ caseId, onComplete }) {
           {!isLoading && !job?.job_id && (
             <Paper elevation={0} sx={{ p: 3, border: '1px solid', borderColor: 'divider', borderRadius: 3 }}>
               <Typography color="text.secondary">
-                No alignment job yet for this case. Upload a scan and assign at least one
-                tooth to a library mapped to an alignment vendor.
+                No alignment job yet for this case. Upload a scan to start alignment.
               </Typography>
             </Paper>
           )}
 
           {/* Results Section */}
-          {job?.status === 'completed' && job.summary && (
+          {READY_STATUSES.has(job?.status) && job.summary && (
             <Fade in timeout={800}>
               <Box>
                 {/* Main Viewer and Controls */}
