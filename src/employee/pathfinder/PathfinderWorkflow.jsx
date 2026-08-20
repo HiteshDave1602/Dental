@@ -1,5 +1,6 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import {
+  default as api,
   getAlignmentState, calculateAngles, placeAngleCorrectors, searchAroundPoint,
   deleteInstance, rotateAnalog, setInstanceVendor, listVendors,
   extractErrorMessage,
@@ -36,7 +37,7 @@ const FAILED_STATUSES = new Set(['failed', 'error']);
 // recorded against the case and a page refresh resumes where the user left
 // off. Wrapped in a scoped MUI ThemeProvider so it themes correctly inside the
 // otherwise-Tailwind employee panel.
-function PathfinderApp({ caseId, onComplete }) {
+function PathfinderApp({ caseId, scanFile, onComplete }) {
   const [job, setJob] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -46,6 +47,7 @@ function PathfinderApp({ caseId, onComplete }) {
   const [isSearching, setIsSearching] = useState(false);
   const [searchFailureReason, setSearchFailureReason] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const scanUploadRetriedRef = useRef(false);
 
   const [visibleInstances, setVisibleInstances] = useState({ scene: true });
   const [hoveredInstance, setHoveredInstance] = useState(null);
@@ -67,16 +69,21 @@ function PathfinderApp({ caseId, onComplete }) {
     return () => { cancelled = true; };
   }, [caseId]);
 
-  // The workflow reads the case's own alignment job rather than creating one:
-  // the scan was uploaded earlier in the wizard and a job was submitted then.
-  // Because state lives server-side, refreshing the page mid-review restores
-  // everything — including angle and corrector results already computed.
+  // The workflow reads the case's own alignment job. If the job is not present
+  // yet and the scan file is still in memory from step 2, retry only the scan
+  // upload here, then reload the job state.
   const loadState = useCallback(async () => {
     if (!caseId) return null;
-    const state = await getAlignmentState(caseId);
+    let state = await getAlignmentState(caseId);
+    if (!state?.job_id && scanFile && !scanUploadRetriedRef.current) {
+      scanUploadRetriedRef.current = true;
+      await api.employee.cases.uploadScan(caseId, scanFile);
+      await api.employee.cases.updateStep(caseId, 3);
+      state = await getAlignmentState(caseId);
+    }
     setJob(state);
     return state;
-  }, [caseId]);
+  }, [caseId, scanFile]);
 
   useEffect(() => {
     if (!caseId) return undefined;
@@ -359,8 +366,7 @@ function PathfinderApp({ caseId, onComplete }) {
           {!isLoading && !job?.job_id && (
             <Paper elevation={0} sx={{ p: 3, border: '1px solid', borderColor: 'divider', borderRadius: 3 }}>
               <Typography color="text.secondary">
-                No alignment job yet for this case. Upload a scan and assign at least one
-                tooth to a library mapped to an alignment vendor.
+                No alignment job yet for this case. Upload a scan to start alignment.
               </Typography>
             </Paper>
           )}

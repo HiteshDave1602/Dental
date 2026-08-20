@@ -1,15 +1,13 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FileUp, Lock, Search, Sparkles, Trash2, UploadCloud, X } from 'lucide-react';
+import { FileUp, Lock, Sparkles, UploadCloud } from 'lucide-react';
 import StepProgress from '../components/StepProgress';
-import ToothChart from '../components/ToothChart';
 import ScanPreview3D from '../components/ScanPreview3D';
 import ResultsViewer3D from '../components/ResultsViewer3D';
 // PATHFINDER INTEGRATION: after Step 1 (New Case → Next), the scan-body
 // alignment workflow ported from the standalone `pathfinder` app takes over.
 import PathfinderWorkflow from '../pathfinder/PathfinderWorkflow';
 import { useCaseStore } from '../../store/caseStore';
-import { useLibraryData } from '../../hooks/useLibraryData';
 import api, { extractErrorMessage, notifyError, notifySuccess, RESOLVED_BASE_URL } from '../../Script/api';
 
 const MB = 1024 * 1024;
@@ -50,10 +48,11 @@ const AlertBanner = ({ msg, variant = 'amber' }) => {
 
 // The wizard is three steps:
 //
-//   1. Patient details            -> validates locally and moves to scan upload
-//   2. Scan upload + tooth chart  -> assigns libraries and uploads the scan,
-//                                    which submits an alignment job server-side
-//   3. Alignment review           -> PathfinderWorkflow, scoped to this case
+//   1. Patient details -> validates locally and moves to scan upload
+//   2. Scan upload      -> uploads the scan, which submits an alignment job
+//                          server-side (the engine detects implants itself —
+//                          no manual tooth/library assignment needed upfront)
+//   3. Alignment review -> PathfinderWorkflow, scoped to this case
 //
 // Steps 3-5 of the original design (superimpose / results / download) were
 // placeholder UI over a stubbed analysis endpoint. The review workflow covers
@@ -68,21 +67,9 @@ const EmployeeNewCase = () => {
     patientData,
     caseId,
     caseRef,
-    selectedTeeth,
-    activeTooth,
-    toothBrandSelections,
-    toothAngleSelections,
-    toothAssignments,
     setStep,
     setPatientData,
     setCaseCreated,
-    toggleTooth,
-    setActiveTooth,
-    setToothBrand,
-    setToothAngle,
-    assignLibrary,
-    removeAssignment,
-    clearTeeth,
     resetCase,
   } = useCaseStore();
 
@@ -92,8 +79,8 @@ const EmployeeNewCase = () => {
   const [creatingCase, setCreatingCase] = useState(false);
 
   const [upload, setUpload] = useState(null);          // File object — can't persist
-  const [uploadingToBackend, setUploadingToBackend] = useState(false);
   const [scanUploadError, setScanUploadError] = useState('');
+  const [savingStep2, setSavingStep2] = useState(false);
   const [wireframeMode, setWireframeMode] = useState(false);
   const [orthographicMode, setOrthographicMode] = useState(false);
 
@@ -108,31 +95,6 @@ const EmployeeNewCase = () => {
   const [analysisError, setAnalysisError] = useState('');
   const [meshVisibility, setMeshVisibility] = useState({ patientScan: true, scanBody: true, analog: true });
   const [activeResultTooth, setActiveResultTooth] = useState(null);
-
-  // ── Library cascade (Brand → Angle → Libraries) ───────────────────────────
-  const {
-    brands, brandsLoading, brandsError, fetchBrands,
-    angles, anglesLoading, anglesError,
-    fetchAnglesForBrand,
-    displayedLibraries, selectAngle,
-    restoreForTooth,
-  } = useLibraryData();
-
-  // Restore cascade when user switches to a different tooth
-  const prevActiveTooth = useRef(null);
-  useEffect(() => {
-    if (activeTooth && activeTooth !== prevActiveTooth.current) {
-      prevActiveTooth.current = activeTooth;
-      const savedBrand = toothBrandSelections[activeTooth];
-      const savedAngle = toothAngleSelections?.[activeTooth] ?? null;
-      if (savedBrand) restoreForTooth(savedBrand, savedAngle);
-    }
-  }, [activeTooth, toothBrandSelections, toothAngleSelections, restoreForTooth]);
-
-  // Fetch brands lazily when entering Step 2
-  useEffect(() => {
-    if (currentStep === 2) fetchBrands();
-  }, [currentStep, fetchBrands]);
 
   // The step-3 rehydration effect that used to sit here has been removed.
   //
@@ -158,19 +120,19 @@ const EmployeeNewCase = () => {
   }, [patient, setPatientData]);
 
   // ── Derived state ─────────────────────────────────────────────────────────
-  const allAssigned = useMemo(
-    () => selectedTeeth.length > 0 && selectedTeeth.every((t) => Boolean(toothAssignments[t])),
-    [selectedTeeth, toothAssignments]
-  );
-
   const step1Valid = useMemo(() => {
     const errors = validatePatient(patient);
     return Object.keys(errors).length === 0;
   }, [patient]);
 
-  // The alignment backend needs a real case, mapped library assignments, and
-  // then the scan upload. Uploading first can submit a job with no vendor map.
-  const canGoToStep3 = Boolean(caseId);
+  // This button only pushes the selected scan and advances the server-side
+  // wizard step; tooth/library assignment is intentionally not posted here.
+  const canGoToStep3 = Boolean(upload);
+  const step2NextTitle = !caseId
+    ? 'Case will be created before upload'
+    : !upload
+      ? 'Upload a scan to continue'
+      : '';
 
   const patientScanUrl = caseData?.patient_scan_url
     ? `${RESOLVED_BASE_URL}${caseData.patient_scan_url}`
@@ -206,7 +168,7 @@ const EmployeeNewCase = () => {
       return;
     }
 
-    if (false && caseId) {
+    if (caseId) {
       setStep(2);
       api.employee.cases.updateStep(caseId, 2).catch(() => {});
       return;
@@ -245,44 +207,6 @@ const EmployeeNewCase = () => {
     }
     setUpload(file);
     setScanUploadError('');
-
-    // Upload to backend immediately so we don't have to do it at the end
-    if (caseId) {
-      setUploadingToBackend(true);
-      try {
-        await api.employee.cases.uploadScan(caseId, file);
-      } catch {
-        // Non-fatal — user can still proceed; scan can be re-uploaded
-      } finally {
-        setUploadingToBackend(false);
-      }
-    }
-  };
-
-  const handleBrandSelect = (brand) => {
-    if (!activeTooth) return;
-    setToothBrand(activeTooth, brand); // also resets angle for this tooth in store
-    fetchAnglesForBrand(brand);        // one call → all angles + their libraries loaded
-  };
-
-  const handleAngleSelect = (angle) => {
-    if (!activeTooth) return;
-    const parsed = angle === '' ? null : parseFloat(angle);
-    setToothAngle(activeTooth, parsed);
-    selectAngle(parsed); // pure client-side filter — no API call
-  };
-
-  const handleLibraryAssign = (library) => {
-    if (!activeTooth) return;
-    // Store full library data including assets so Step 3 (superimpose) has the STL paths
-    assignLibrary(activeTooth, {
-      company_name: library.company_name,
-      library_id: String(library.id),
-      angle_alignment: library.angle_alignment,
-      manufacturer_id: library.manufacturer_id,
-      assets: library.assets ?? [],       // scan_body / analog / angle STL file paths
-    });
-    notifySuccess(`Library assigned to Tooth ${activeTooth}`);
   };
 
   const goToStep = (step) => {
@@ -292,9 +216,46 @@ const EmployeeNewCase = () => {
     }
   };
 
-  const handleNextFromStep2 = () => {
-    if (!canGoToStep3) return;
-    setStep(3);
+  const handleNextFromStep2 = async () => {
+    if (!upload) {
+      notifyError('Upload a scan file before continuing.');
+      return;
+    }
+    const errors = validatePatient(patient);
+    if (!caseId && Object.keys(errors).length) {
+      setFieldErrors(errors);
+      notifyError('Complete patient details before continuing.');
+      return;
+    }
+
+    setSavingStep2(true);
+    setScanUploadError('');
+    try {
+      let activeCaseId = caseId;
+
+      if (!activeCaseId) {
+        const res = await api.employee.cases.create({
+          patient_name: patient.fullName.trim(),
+          patient_age: parseInt(patient.age, 10),
+          case_date: patient.caseDate,
+          doctor_notes: patient.notes || null,
+        });
+        const data = res.data?.data || res.data;
+        activeCaseId = data.id;
+        setCaseCreated(data.id, data.case_reference);
+      }
+
+      // The alignment job is submitted server-side when the scan lands — the
+      // engine detects implant instances itself, no tooth/library assignment
+      // needs to be posted beforehand.
+      await api.employee.cases.uploadScan(activeCaseId, upload);
+      await api.employee.cases.updateStep(activeCaseId, 3);
+      setStep(3);
+    } catch (err) {
+      notifyError(extractErrorMessage(err, 'Failed to upload scan. Please try again.'));
+    } finally {
+      setSavingStep2(false);
+    }
   };
 
   // The alignment vendor call is async: submitting a job just starts it
@@ -366,24 +327,7 @@ const EmployeeNewCase = () => {
         }
       }
 
-      // Persist teeth assignments — normally already synced at the Step 2→3
-      // transition (required for analysis.calculate to see them), so only do
-      // it here as a fallback for the "skipped step 1" path above. addTeeth
-      // isn't idempotent server-side (always inserts), so guard against
-      // re-adding rows that already exist.
       const finalCaseId = caseId || activeCaseId;
-      const teeth = selectedTeeth.map((tooth) => ({
-        tooth_number: tooth,
-        library_id: toothAssignments[tooth]?.library_id ?? null,
-      }));
-      if (teeth.length) {
-        const existing = await api.employee.cases.getTeeth(finalCaseId);
-        const existingTeeth = existing.data?.data || existing.data || [];
-        if (!existingTeeth.length) {
-          await api.employee.cases.addTeeth(finalCaseId, teeth);
-        }
-      }
-
       await api.employee.cases.updateStep(finalCaseId, 5).catch(() => {});
       setSavedRef(caseRef || 'N/A');
       notifySuccess('Case saved successfully!');
@@ -411,10 +355,6 @@ const EmployeeNewCase = () => {
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
-  const currentBrandForTooth = activeTooth ? (toothBrandSelections[activeTooth] || '') : '';
-  const currentAngleForTooth = activeTooth ? (toothAngleSelections?.[activeTooth] ?? '') : '';
-  const assignedForTooth = activeTooth ? toothAssignments[activeTooth] : null;
-
   // ── STEP 3 — Alignment review ─────────────────────────────────────────────
   // The scan was uploaded in step 2, which submitted an alignment job for this
   // case. The workflow reads that job rather than creating its own, so results
@@ -437,7 +377,7 @@ const EmployeeNewCase = () => {
           </div>
         </div>
         <div className="mt-4">
-          <PathfinderWorkflow caseId={caseId} onComplete={() => navigate('/my-cases')} />
+          <PathfinderWorkflow caseId={caseId} scanFile={upload} onComplete={() => navigate('/my-cases')} />
         </div>
       </div>
     );
@@ -504,13 +444,13 @@ const EmployeeNewCase = () => {
           <div className="flex justify-end">
             <button
               type="button"
-              disabled={!step1Valid}
+              disabled={!step1Valid || creatingCase}
               onClick={handleStep1Next}
               title={!step1Valid ? 'Fill all mandatory fields to continue' : ''}
               className="gradient-btn h-10 px-6 text-white font-semibold disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center gap-2"
             >
-              {!step1Valid ? <Lock size={14} /> : <Sparkles size={14} />}
-              Next Step →
+              {creatingCase ? <Spinner /> : !step1Valid ? <Lock size={14} /> : <Sparkles size={14} />}
+              {creatingCase ? 'Creating...' : 'Next Step →'}
             </button>
           </div>
         </section>
@@ -521,7 +461,7 @@ const EmployeeNewCase = () => {
           download steps are commented out via the `false &&` guards below.
           They are kept intact for reference / easy rollback. */}
 
-      {/* ── STEP 2 — Upload Scan & Library Assignment ────────────────────── */}
+      {/* ── STEP 2 — Upload Scan ──────────────────────────────────────────── */}
       {currentStep === 2 && (
         <section className="space-y-4">
           {/* Scan upload */}
@@ -541,8 +481,7 @@ const EmployeeNewCase = () => {
               <div className="mt-4 space-y-3">
                 <div className="flex items-center justify-between rounded-xl border border-emerald-300 bg-emerald-50 p-3">
                   <div className="text-sm text-emerald-700 flex items-center gap-2">
-                    {uploadingToBackend ? <Spinner /> : '✓'} {upload.name} ({fileSizeInMb(upload.size)})
-                    {uploadingToBackend && <span className="text-xs text-[#12344D]/60">Uploading…</span>}
+                    ✓ {upload.name} ({fileSizeInMb(upload.size)})
                   </div>
                   <button
                     type="button"
@@ -552,6 +491,7 @@ const EmployeeNewCase = () => {
                     Remove
                   </button>
                 </div>
+                {scanUploadError && <AlertBanner msg={scanUploadError} variant="red" />}
                 <div className="rounded-xl border border-[#9cd5ff]/70 bg-[#f6fbfe] h-[380px] relative">
                   <span className="absolute top-3 left-3 text-xs px-2 py-1 rounded-full border border-[#6ab0e3]/50 bg-[#c1e5ff] text-[#0a2472]">3D Scan Preview</span>
                   <div className="absolute right-3 top-3 z-10 flex gap-2 text-xs">
@@ -583,213 +523,6 @@ const EmployeeNewCase = () => {
               </div>
             )}
           </article>
-
-          {/* Teeth selection & library assignment (only shown once scan is uploaded) */}
-          {upload && (
-            <article className="space-y-4">
-              {/* <div className="glass-card p-4 border-l-4 border-[#072ac8]">
-                <h3 className="employee-heading text-[#12344D]">Assign Implant Library to Teeth</h3>
-                <p className="text-sm text-[#12344D]/70 mt-1">
-                  Click a tooth, choose a brand, then select the matching library entry.
-                </p>
-              </div> */}
-
-              <ToothChart
-                selectedTeeth={selectedTeeth}
-                onToggle={toggleTooth}
-                onClear={() => clearTeeth()}
-              />
-
-              {selectedTeeth.length > 0 && (
-                <div className="glass-card p-4 space-y-4">
-                  {/* Tooth tabs */}
-                  <div className="flex flex-wrap gap-2 items-center justify-between">
-                    <div className="flex flex-wrap gap-2">
-                      {selectedTeeth.map((tooth) => (
-                        <button
-                          key={tooth}
-                          type="button"
-                          onClick={() => {
-                            setActiveTooth(tooth);
-                            const brand = toothBrandSelections[tooth];
-                            if (brand) fetchAnglesForBrand(brand);
-                          }}
-                          className={`px-3 py-2 rounded-full text-sm border transition-colors ${
-                            activeTooth === tooth
-                              ? 'bg-[#072ac8] border-[#072ac8] text-white'
-                              : 'border-[#9cd5ff] text-[#12344D]/60 hover:border-[#072ac8]'
-                          }`}
-                        >
-                          Tooth {tooth} {toothAssignments[tooth] ? '✓' : ''}
-                        </button>
-                      ))}
-                    </div>
-                    <span className="text-xs text-[#12344D]/60">Active: {activeTooth || 'None'}</span>
-                  </div>
-
-                  {!activeTooth && (
-                    <AlertBanner msg="Select a tooth above to assign a library." />
-                  )}
-
-                  {activeTooth && (
-                    <div className="space-y-4">
-                      {/* Currently assigned badge */}
-                      {assignedForTooth && (
-                        <div className="flex items-center justify-between rounded-xl border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm">
-                          <span className="text-emerald-700">
-                            ✓ Assigned: <strong>{assignedForTooth.company_name}</strong> — {assignedForTooth.manufacturer_id || 'N/A'} · {assignedForTooth.angle_alignment}°
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => removeAssignment(activeTooth)}
-                            className="text-rose-600 hover:text-rose-700"
-                          >
-                            <X size={14} />
-                          </button>
-                        </div>
-                      )}
-
-                      {/* Step 1 — Brand */}
-                      <div className="flex flex-wrap gap-2 items-end">
-                        <div className="relative">
-                          <Search size={14} className="absolute left-3 top-3 text-[#12344D]/50" />
-                          <input className="glass-input h-10 pl-8 pr-3 placeholder:text-[#12344D]/50" placeholder="Search" />
-                        </div>
-
-                        {/* Brand dropdown */}
-                        <div className="flex flex-col gap-1">
-                          <label className="text-[10px] text-[#12344D]/50 uppercase tracking-wide px-1">Brand</label>
-                          <select
-                            className="glass-input h-10 px-3 min-w-[160px]"
-                            value={currentBrandForTooth}
-                            onChange={(e) => handleBrandSelect(e.target.value)}
-                            disabled={brandsLoading}
-                          >
-                            <option value="">{brandsLoading ? 'Loading…' : 'Select Brand'}</option>
-                            {brands.map((b) => (
-                              <option key={b} value={b}>{b}</option>
-                            ))}
-                          </select>
-                        </div>
-
-                        {/* Angle dropdown — shown only after brand selected */}
-                        {currentBrandForTooth && (
-                          <div className="flex flex-col gap-1">
-                            <label className="text-[10px] text-[#12344D]/50 uppercase tracking-wide px-1">
-                              Angle Alignment
-                            </label>
-                            <select
-                              className="glass-input h-10 px-3 min-w-[160px]"
-                              value={currentAngleForTooth}
-                              onChange={(e) => handleAngleSelect(e.target.value)}
-                              disabled={anglesLoading}
-                            >
-                              <option value="">
-                                {anglesLoading ? 'Loading…' : 'All Angles'}
-                              </option>
-                              {angles.map((a) => (
-                                <option key={a.angle_alignment} value={a.angle_alignment}>
-                                  {a.angle_alignment}° ({a.library_count} {a.library_count === 1 ? 'library' : 'libraries'})
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-                        )}
-                      </div>
-
-                      {brandsError && <AlertBanner msg={brandsError} />}
-                      {anglesError && <AlertBanner msg={anglesError} />}
-
-                      {/* Library cards */}
-                      {!currentBrandForTooth && (
-                        <p className="text-xs text-[#12344D]/60">① Select a brand → ② choose an angle → ③ pick a library.</p>
-                      )}
-
-                      {/* Only show hint when libraries haven't loaded yet */}
-                      {currentBrandForTooth && !anglesLoading && displayedLibraries.length === 0 && !anglesError && (
-                        <p className="text-xs text-[#12344D]/60">No libraries found. Try a different brand or angle.</p>
-                      )}
-
-                      {/* Skeleton while loading angles + libraries from one API call */}
-                      {anglesLoading && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
-                          {[1, 2, 3, 4].map((i) => (
-                            <div key={i} className="h-28 rounded-xl border border-[#9cd5ff]/50 bg-[#c1e5ff]/50 animate-pulse" />
-                          ))}
-                        </div>
-                      )}
-
-                      {anglesError && <AlertBanner msg={anglesError} />}
-
-                      {currentAngleForTooth !== '' && !anglesLoading && displayedLibraries.length === 0 && !anglesError && (
-                        <p className="text-xs text-[#12344D]/60">No libraries found for this angle.</p>
-                      )}
-
-                      {displayedLibraries.length > 0 && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
-                          {displayedLibraries.map((lib) => {
-                            const isAssigned = toothAssignments[activeTooth]?.library_id === String(lib.id);
-                            return (
-                              <button
-                                key={lib.id}
-                                type="button"
-                                onClick={() => handleLibraryAssign(lib)}
-                                className={`text-left p-3 rounded-xl border transition-all ${
-                                  isAssigned
-                                    ? 'border-[#072ac8] bg-[#c1e5ff]/40 shadow-[0_0_15px_rgba(7,42,200,.2)]'
-                                    : 'border-[#9cd5ff] hover:border-[#072ac8]'
-                                }`}
-                              >
-                                <div className="flex items-center justify-between gap-2">
-                                  <p className="text-sm text-[#12344D] truncate">{lib.company_name}</p>
-                                  <span className="shrink-0 text-[10px] px-2 py-1 rounded-full border border-[#6ab0e3]/50 text-[#0a2472]">Admin</span>
-                                </div>
-                                <p className="text-xs text-[#12344D]/60 mt-1">
-                                  {lib.manufacturer_id || 'N/A'} · {lib.angle_alignment}°
-                                </p>
-                                {/* All asset filenames */}
-                                {lib.assets?.length > 0 && (
-                                  <div className="mt-2 space-y-0.5">
-                                    {lib.assets.map((asset) => (
-                                      <div key={asset.id} className="flex items-center gap-1.5">
-                                        <span className="shrink-0 text-[9px] px-1.5 py-0.5 rounded border border-[#9cd5ff]/70 text-[#12344D]/50 uppercase tracking-wide">
-                                          {asset.asset_type}
-                                        </span>
-                                        <p className="text-[10px] text-[#12344D]/60 truncate">{asset.file_name}</p>
-                                      </div>
-                                    ))}
-                                  </div>
-                                )}
-                                <p className="text-[11px] text-[#12344D]/50 mt-2">
-                                  {isAssigned ? '✓ Assigned' : `Click to assign to Tooth ${activeTooth}`}
-                                </p>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Assignment Summary */}
-                  <div className="glass-card p-3 space-y-2">
-                    <h4 className="employee-heading text-sm text-[#12344D]">Assignment Summary</h4>
-                    {selectedTeeth.map((tooth) => {
-                      const a = toothAssignments[tooth];
-                      return (
-                        <div key={tooth} className="flex items-center justify-between text-sm">
-                          <span className="text-[#12344D]/80">Tooth {tooth}</span>
-                          <span className={a ? 'text-[#072ac8] font-semibold' : 'text-amber-600'}>
-                            {a ? `${a.company_name} · ${a.manufacturer_id || 'N/A'} ✓` : '[Not assigned]'}
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-            </article>
-          )}
         </section>
       )}
 
@@ -808,13 +541,13 @@ const EmployeeNewCase = () => {
           <div className="min-w-0 text-right">
             <button
               type="button"
-              disabled={!canGoToStep3}
+              disabled={savingStep2}
               onClick={handleNextFromStep2}
-              title={!canGoToStep3 ? 'Upload a scan to continue' : ''}
+              title={step2NextTitle}
               className="h-10 max-w-full whitespace-nowrap px-5 rounded-full bg-[#072ac8] text-white hover:bg-[#0a2472] disabled:opacity-70 disabled:cursor-not-allowed inline-flex items-center gap-2"
             >
-              {!canGoToStep3 ? <Lock size={14} /> : <FileUp size={14} />}
-              Next Step →
+              {savingStep2 ? <Spinner /> : canGoToStep3 ? <FileUp size={14} /> : <Lock size={14} />}
+              {savingStep2 ? 'Saving...' : 'Next Step →'}
             </button>
           </div>
         ) : null}
