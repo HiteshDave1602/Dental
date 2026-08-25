@@ -26,7 +26,26 @@ export const RESOLVED_BASE_URL = API_BASE_URL || FALLBACK_BASE_URL;
  */
 export const assetUrl = (path) => {
     if (!path) return path;
-    if (/^(https?:)?\/\//i.test(path)) return path;
+    if (/^(https?:)?\/\//i.test(path)) {
+        // Absolute backend URLs (artifacts.scene, or any presigned scan URL) go
+        // straight to the API host, bypassing RESOLVED_BASE_URL entirely. The
+        // live API's CORS allowlist permits the deployed frontend origin but
+        // rejects localhost (see vite.config.js), so in dev the browser blocks
+        // the response and useLoader's fetch throws "Failed to fetch". When
+        // RESOLVED_BASE_URL is a same-origin proxy path (starts with '/', as in
+        // dev), route through it instead so the request never leaves the page's
+        // origin. In prod RESOLVED_BASE_URL is itself absolute, so this is a
+        // no-op and the URL is returned untouched.
+        if (RESOLVED_BASE_URL.startsWith('/')) {
+            try {
+                const resolved = new URL(path, window.location.origin);
+                return `${RESOLVED_BASE_URL}${resolved.pathname}${resolved.search}`;
+            } catch {
+                return path;
+            }
+        }
+        return path;
+    }
     return `${RESOLVED_BASE_URL}${path}`;
 };
 
