@@ -91,20 +91,21 @@ apiClient.interceptors.request.use(
 // A 401 means the session is gone, so clear it and send the user to login.
 // Previously this only showed a toast, leaving them on an authenticated-looking
 // shell where every subsequent request failed.
+//
+// We intentionally do NOT call window.location.assign here. The logout() call
+// clears the Zustand token, which flips canAccessApp to false in
+// EmployeeAppRouter, and React Router's route guard handles the redirect
+// naturally. A hard assign would reload the page before the calling
+// component's catch block could run, swallowing the error.
 const handleUnauthorized = (tokenKey, loginPath) => (error) => {
-    if (!DEMO_MODE && error.response?.status === 401) {
-        // Employee authentication is held in the Zustand store as well as
-        // sessionStorage. Clearing only sessionStorage left the router thinking
-        // it was authenticated and caused a login/dashboard redirect loop.
+    if (!DEMO_MODE && error.response?.status === 401 && !error.config?._skipLogout) {
+        console.error('[401] URL:', error.config?.url, '| Response:', error.response?.data);
         if (tokenKey === EMPLOYEE_TOKEN_KEY) {
             useAuthStore.getState().logout();
         } else {
             sessionStorage.removeItem(tokenKey);
         }
         notifyError('Session expired. Please login again.');
-        if (!window.location.pathname.startsWith(loginPath)) {
-            window.location.assign(loginPath);
-        }
     }
     return Promise.reject(error);
 };
@@ -402,6 +403,8 @@ const api = {
             },
             updateStep: async (caseId, step) =>
                 employeeService.patch(`/user/cases/${caseId}/step`, { current_step: step }),
+            setVendors: async (caseId, vendorIds) =>
+                employeeService.put(`/user/cases/${caseId}/vendors`, { vendor_ids: vendorIds }),
         },
         analysis: {
             calculate: async (caseId) => employeeService.post(`/user/analysis/calculate/${caseId}`),
@@ -409,6 +412,11 @@ const api = {
         },
         alignment: {
             status: async (caseId) => employeeService.get(`/user/cases/${caseId}/alignment/status`),
+            vendors: async (caseId) => {
+                if (!caseId) return [];
+                const data = unwrap(await employeeService.get(`${alignmentBase(caseId)}/vendors`));
+                return Array.isArray(data) ? data : data?.vendors || [];
+            },
         },
         subscription: {
             myPlan: async () => employeeService.get('/user/subscription/my-plan'),

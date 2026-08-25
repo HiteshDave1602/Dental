@@ -16,6 +16,9 @@ export const useCaseStore = create(
       caseId: null,    // backend UUID
       caseRef: null,   // human readable PF-XXXX
 
+      // ── Vendors ─────────────────────────────────────────────────────────────
+      selectedVendorIds: [],
+
       // ── Teeth ────────────────────────────────────────────────────────────────
       selectedTeeth: [],
       activeTooth: null,
@@ -34,6 +37,8 @@ export const useCaseStore = create(
       setPatientData: (data) => set({ patientData: data }),
 
       setCaseCreated: (caseId, caseRef) => set({ caseId, caseRef }),
+
+      setSelectedVendorIds: (ids) => set({ selectedVendorIds: ids }),
 
       toggleTooth: (tooth) =>
         set((s) => {
@@ -87,6 +92,7 @@ export const useCaseStore = create(
           patientData: { ...DEFAULT_PATIENT, caseDate: today() },
           caseId: null,
           caseRef: null,
+          selectedVendorIds: [],
           selectedTeeth: [],
           activeTooth: null,
           toothBrandSelections: {},
@@ -101,6 +107,7 @@ export const useCaseStore = create(
         patientData: s.patientData,
         caseId: s.caseId,
         caseRef: s.caseRef,
+        selectedVendorIds: s.selectedVendorIds,
         selectedTeeth: s.selectedTeeth,
         activeTooth: s.activeTooth,
         toothBrandSelections: s.toothBrandSelections,

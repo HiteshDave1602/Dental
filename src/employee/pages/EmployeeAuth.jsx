@@ -14,7 +14,7 @@ const EmployeeAuth = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [videoTransition, setVideoTransition] = useState(''); 
   const transitionTimer = useRef(null);
-  
+      
   const isRegistering = tab === 'register';
 
   const canRegister = useMemo(() => (

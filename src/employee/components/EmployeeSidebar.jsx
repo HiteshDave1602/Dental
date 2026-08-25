@@ -9,9 +9,10 @@ import {
   Settings,
   WalletCards,
 } from 'lucide-react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { cn } from '../../utils/utils';
 import { useEmployee } from '../../context/EmployeeContext';
+import { useCaseStore } from '../../store/caseStore';
 import pathfinderLogo from '../../assets/images/MY PATHFINDER LOGO.JPG.jpeg';
 
 const menuGroups = [
@@ -43,9 +44,16 @@ const railItems = [
 
 const EmployeeSidebar = ({ collapsed, onToggle }) => {
   const { pathname } = useLocation();
+  const navigate = useNavigate();
   const { employeeUser, logoutEmployee } = useEmployee();
+  const resetCase = useCaseStore((s) => s.resetCase);
   const displayName = employeeUser?.name || employeeUser?.email || 'User';
   const displayEmail = employeeUser?.email || 'Dental professional';
+
+  const handleNewCase = () => {
+    resetCase();
+    navigate('/new-case');
+  };
 
   return (
     <aside
@@ -79,6 +87,26 @@ const EmployeeSidebar = ({ collapsed, onToggle }) => {
             <nav className="space-y-1">
               {railItems.slice(0, 4).map((item) => {
                 const active = pathname === item.to;
+                const isNewCase = item.to === '/new-case';
+                if (isNewCase) {
+                  return (
+                    <button
+                      key={item.to}
+                      type="button"
+                      onClick={handleNewCase}
+                      title={item.label}
+                      aria-label={item.label}
+                      className={cn(
+                        'mx-auto grid h-10 w-10 place-content-center rounded-xl transition-all',
+                        active
+                          ? 'bg-white/25 text-white shadow-inner'
+                          : 'text-white/80 hover:bg-white/20 hover:text-white'
+                      )}
+                    >
+                      <item.icon size={16} />
+                    </button>
+                  );
+                }
                 return (
                   <Link
                     key={item.to}
@@ -162,6 +190,31 @@ const EmployeeSidebar = ({ collapsed, onToggle }) => {
               <nav className="space-y-1">
                 {group.items.map((item) => {
                   const active = pathname === item.to;
+                  const isNewCase = item.to === '/new-case';
+                  if (isNewCase) {
+                    return (
+                      <button
+                        key={item.to}
+                        type="button"
+                        onClick={handleNewCase}
+                        className={cn(
+                          'group grid h-10 grid-cols-[20px_minmax(0,1fr)_auto] items-center gap-3 rounded-xl border px-3 text-sm font-semibold transition-all duration-200 w-full text-left',
+                          active
+                            ? 'border-white/80 bg-white/90 text-[#12344D] shadow-[0_7px_18px_rgba(106,176,227,0.25)]'
+                            : 'border-transparent text-white/80 hover:bg-white/15 hover:text-white'
+                        )}
+                      >
+                        <item.icon
+                          size={16}
+                          className={cn(
+                            'transition-colors',
+                            active ? 'text-[#072ac8]' : 'text-white/70 group-hover:text-white'
+                          )}
+                        />
+                        <span className="min-w-0 truncate">{item.label}</span>
+                      </button>
+                    );
+                  }
                   return (
                     <Link
                       key={item.to}
