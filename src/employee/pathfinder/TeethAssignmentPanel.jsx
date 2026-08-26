@@ -183,7 +183,7 @@ function TeethAssignmentPanel({ caseId, instances = [], onComplete, onPreviewIns
           )}
 
           <div className="flex flex-col gap-2">
-            <button
+            {/* <button
               type="button"
               onClick={handleSaveAndFinish}
               disabled={isSaving}
@@ -195,7 +195,7 @@ function TeethAssignmentPanel({ caseId, instances = [], onComplete, onPreviewIns
                 <CheckCircle2 size={15} />
               )}
               {isSaving ? 'Saving…' : 'Save & Finish'}
-            </button>
+            </button> */}
             <button
               type="button"
               onClick={handleClear}

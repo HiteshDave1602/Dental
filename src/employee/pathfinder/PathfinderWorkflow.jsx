@@ -5,6 +5,7 @@ import {
   deleteInstance, rotateAnalog, setInstanceVendor, listVendors,
   extractErrorMessage,
 } from '../../Script/api';
+import { useCaseStore } from '../../store/caseStore';
 import {
   Box,
   Typography,
@@ -59,6 +60,9 @@ function PathfinderApp({ caseId, scanFile, onComplete }) {
   const [searchFailureReason, setSearchFailureReason] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const scanUploadRetriedRef = useRef(false);
+  const toothInstanceMap = useCaseStore((s) => s.toothInstanceMap);
+  const patientName = useCaseStore((s) => s.patientData?.fullName ?? '');
+  const caseRef = useCaseStore((s) => s.caseRef ?? '');
 
   const [visibleInstances, setVisibleInstances] = useState({ scene: true });
   const [hoveredInstance, setHoveredInstance] = useState(null);
@@ -702,6 +706,11 @@ function PathfinderApp({ caseId, scanFile, onComplete }) {
                     {/* Results Display */}
                     <ResultsDisplay
                       job={job}
+                      caseId={caseId}
+                      patientName={patientName}
+                      caseRef={caseRef}
+                      toothInstanceMap={toothInstanceMap}
+                      onDownloadComplete={onComplete}
                       onInstanceHover={setHoveredInstance}
                       onCalculateAngles={handleCalculateAngles}
                       isCalculatingAngles={isCalculatingAngles}

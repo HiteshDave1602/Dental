@@ -14,7 +14,8 @@ import DownloadIcon from '@mui/icons-material/Download';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import SpeedIcon from '@mui/icons-material/Speed';
 import SearchIcon from '@mui/icons-material/Search';
-import { saveAs } from 'file-saver';
+import JSZip from 'jszip';
+import { jsPDF } from 'jspdf';
 import { assetUrl, extractErrorMessage } from '../../Script/api';
 
 // Artifact paths are NOT all relative — `artifacts.scene` is absolute, because
@@ -154,6 +155,11 @@ function AnalogRotationControl({ instanceIndex, savedDeg, onSave, onDraftChange 
 
 export default function ResultsDisplay({
   job,
+  caseId,
+  patientName = '',
+  caseRef = '',
+  toothInstanceMap = {},
+  onDownloadComplete,
   onCalculateAngles,
   isCalculatingAngles,
   onPlaceAngleCorrectors,
@@ -174,202 +180,281 @@ export default function ResultsDisplay({
   // '' = auto (search every job vendor, best fit wins). Declared before the
   // early return to keep hook order stable.
   const [searchVendorId, setSearchVendorId] = useState('');
+  const [isDownloading, setIsDownloading] = useState(false);
 
   if (!job || !job.summary || job.summary.instances?.length === 0) {
     return null;
   }
 
-  const handleDownloadAll = () => {
-    if (job.artifacts.composite) saveAs(fileUrl(job.artifacts.composite), 'composite_mesh.ply');
-    // The raw summary JSON is no longer downloadable (it carried internal
-    // per-instance transforms/fitness/rmse); the curated summary is in state.
-    if (job.calculateAngles?.reference_plane_cube_path) saveAs(fileUrl(job.calculateAngles.reference_plane_cube_path), 'calculated_reference_plane_cube.stl');
-    if (job.calculateAngles?.reference_plane_path) saveAs(fileUrl(job.calculateAngles.reference_plane_path), 'calculated_reference_plane.stl');
-    if (job.calculateAngles?.insertion_axis_cube_and_analogs_path) {
-      saveAs(fileUrl(job.calculateAngles.insertion_axis_cube_and_analogs_path), 'insertion_axis_cube_and_analogs.stl');
-    }
-    if (job.calculateAngles?.instance_results) {
-      job.calculateAngles.instance_results.forEach((r) => {
-        if (r.mesh_path) {
-          saveAs(fileUrl(r.mesh_path), `analog_instance_${r.instance_index.toString().padStart(2, '0')}.stl`);
+  const handleDownloadAll = async () => {
+    if (isDownloading) return;
+    setIsDownloading(true);
+    try {
+      const zip = new JSZip();
+      const token = sessionStorage.getItem('employee_token');
+
+      const fetchFile = async (url) => {
+        const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+        if (!res.ok) throw new Error(`Failed to fetch ${url}: ${res.status}`);
+        return res.arrayBuffer();
+      };
+
+      // 1) Denture scan (original uploaded scan mesh)
+      if (job.artifacts?.scene) {
+        try {
+          const data = await fetchFile(fileUrl(job.artifacts.scene));
+          const ext = job.artifacts.scene_format === 'stl' ? 'stl' : 'ply';
+          zip.file(`denture_scan/scan.${ext}`, data);
+        } catch { /* skip missing */ }
+      }
+
+      // 2) Composite mesh
+      if (job.artifacts?.composite) {
+        try {
+          const data = await fetchFile(fileUrl(job.artifacts.composite));
+          zip.file('global/composite_mesh.ply', data);
+        } catch { /* skip */ }
+      }
+
+      // 3) Reference plane & insertion axis meshes
+      if (job.calculateAngles?.reference_plane_path) {
+        try {
+          const data = await fetchFile(fileUrl(job.calculateAngles.reference_plane_path));
+          zip.file('global/reference_plane.stl', data);
+        } catch { /* skip */ }
+      }
+      if (job.calculateAngles?.reference_plane_cube_path) {
+        try {
+          const data = await fetchFile(fileUrl(job.calculateAngles.reference_plane_cube_path));
+          zip.file('global/reference_plane_cube.stl', data);
+        } catch { /* skip */ }
+      }
+      if (job.calculateAngles?.insertion_axis_cube_and_analogs_path) {
+        try {
+          const data = await fetchFile(fileUrl(job.calculateAngles.insertion_axis_cube_and_analogs_path));
+          zip.file('global/insertion_axis_cube_and_analogs.stl', data);
+        } catch { /* skip */ }
+      }
+
+      // 4) Final mesh with correctors
+      if (job.placeCorrectors?.final_with_correctors_path) {
+        try {
+          const data = await fetchFile(fileUrl(job.placeCorrectors.final_with_correctors_path));
+          zip.file('global/final_with_angle_correctors.ply', data);
+        } catch { /* skip */ }
+      }
+
+      // 5) Per-instance files (organized by tooth number)
+      if (job.calculateAngles?.instance_results) {
+        for (const r of job.calculateAngles.instance_results) {
+          const idx = r.instance_index;
+          const tooth = toothInstanceMap[idx];
+          const folder = tooth ? `instances/tooth_${tooth}` : `instances/instance_${String(idx).padStart(2, '0')}`;
+          const prefix = tooth ? `tooth_${tooth}` : `instance_${String(idx).padStart(2, '0')}`;
+
+          // Analog (pure)
+          if (r.mesh_path) {
+            try {
+              const data = await fetchFile(fileUrl(r.mesh_path));
+              zip.file(`${folder}/${prefix}_analog.ply`, data);
+            } catch { /* skip */ }
+          }
+          // Analog with scan body
+          if (r.mesh_with_scan_body_path) {
+            try {
+              const data = await fetchFile(fileUrl(r.mesh_with_scan_body_path));
+              zip.file(`${folder}/${prefix}_analog_with_scan_body.ply`, data);
+            } catch { /* skip */ }
+          }
+          // Rotation visualization
+          if (r.mesh_rotation_vis_path) {
+            try {
+              const data = await fetchFile(fileUrl(r.mesh_rotation_vis_path));
+              zip.file(`${folder}/${prefix}_rotation_vis.ply`, data);
+            } catch { /* skip */ }
+          }
         }
-      });
-    }
-    if (job.placeCorrectors?.final_with_correctors_path) {
-      saveAs(fileUrl(job.placeCorrectors.final_with_correctors_path), 'final_with_angle_correctors.ply');
-    }
-    if (job.placeCorrectors?.instance_correctors) {
-      job.placeCorrectors.instance_correctors.forEach((r) => {
-        if (r.mesh_path) {
-          saveAs(fileUrl(r.mesh_path), `angle_corrector_instance_${r.instance_index.toString().padStart(2, '0')}.stl`);
+      }
+
+      // 6) Aligned instance STLs (from artifacts.instances)
+      if (job.artifacts?.instances?.length) {
+        for (let i = 0; i < job.artifacts.instances.length; i++) {
+          const instPath = job.artifacts.instances[i];
+          const inst = job.summary?.instances?.[i];
+          const idx = inst?.index ?? i;
+          const tooth = toothInstanceMap[idx];
+          const folder = tooth ? `instances/tooth_${tooth}` : `instances/instance_${String(idx).padStart(2, '0')}`;
+          const prefix = tooth ? `tooth_${tooth}` : `instance_${String(idx).padStart(2, '0')}`;
+          try {
+            const absUrl = fileUrl(instPath);
+            const data = await fetchFile(absUrl);
+            zip.file(`${folder}/${prefix}_aligned.stl`, data);
+          } catch { /* skip */ }
         }
-      });
+      }
+
+      // 7) Angle correctors per instance
+      if (job.placeCorrectors?.instance_correctors) {
+        for (const c of job.placeCorrectors.instance_correctors) {
+          const idx = c.instance_index;
+          const tooth = toothInstanceMap[idx];
+          const folder = tooth ? `instances/tooth_${tooth}` : `instances/instance_${String(idx).padStart(2, '0')}`;
+          const prefix = tooth ? `tooth_${tooth}` : `instance_${String(idx).padStart(2, '0')}`;
+
+          if (c.mesh_path) {
+            try {
+              const data = await fetchFile(fileUrl(c.mesh_path));
+              zip.file(`${folder}/${prefix}_angle_corrector.stl`, data);
+            } catch { /* skip */ }
+          }
+          // Analog corrector head
+          if (c.head_mesh_path) {
+            try {
+              const data = await fetchFile(fileUrl(c.head_mesh_path));
+              zip.file(`${folder}/${prefix}_corrector_head.stl`, data);
+            } catch { /* skip */ }
+          }
+        }
+      }
+
+      // 8) Generate Angles & Labels PDF report
+      const doc = new jsPDF();
+      let y = 15;
+      const lineH = 7;
+      const pageH = 280;
+
+      const checkPage = () => {
+        if (y > pageH) { doc.addPage(); y = 15; }
+      };
+
+      // Title
+      doc.setFontSize(18);
+      doc.text('Alignment Results Report', 105, y, { align: 'center' });
+      y += lineH + 4;
+      doc.setFontSize(10);
+      doc.setTextColor(100);
+      doc.text(`Case: ${caseRef || caseId || 'N/A'}`, 14, y);
+      y += lineH;
+      if (patientName) {
+        doc.text(`Patient: ${patientName}`, 14, y);
+        y += lineH;
+      }
+      doc.text(`Date: ${new Date().toLocaleDateString()}`, 14, y);
+      y += lineH;
+      doc.text(`Total Implants Detected: ${job.summary?.instances?.length ?? 0}`, 14, y);
+      y += lineH + 4;
+      doc.setTextColor(0);
+
+      // Tooth assignments table
+      if (Object.keys(toothInstanceMap).length > 0) {
+        doc.setFontSize(13);
+        doc.text('Tooth Assignments', 14, y);
+        y += lineH + 2;
+        doc.setFontSize(10);
+
+        doc.setFont(undefined, 'bold');
+        doc.text('Instance #', 14, y);
+        doc.text('Tooth #', 60, y);
+        doc.text('Vendor', 100, y);
+        doc.text('Angle', 150, y);
+        doc.setFont(undefined, 'normal');
+        y += lineH - 2;
+        doc.line(14, y, 196, y);
+        y += lineH;
+
+        for (const [instIdx, toothNum] of Object.entries(toothInstanceMap)) {
+          checkPage();
+          const idx = Number(instIdx);
+          const inst = job.summary?.instances?.find((i) => i.index === idx);
+          const angleResult = job.calculateAngles?.instance_results?.find((r) => r.instance_index === idx);
+          const angle = angleResult ? `${Number(angleResult.angle).toFixed(2)}°` : '-';
+
+          doc.text(`#${idx}`, 14, y);
+          doc.text(`#${toothNum}`, 60, y);
+          doc.text(inst?.vendor_name || inst?.vendor_id || '-', 100, y);
+          doc.text(angle, 150, y);
+          y += lineH;
+        }
+        y += lineH;
+      }
+
+      // Instance angles table
+      if (job.calculateAngles?.instance_results?.length) {
+        checkPage();
+        doc.setFontSize(13);
+        doc.text('Deviation from Optimal Insertion Axis', 14, y);
+        y += lineH + 2;
+        doc.setFontSize(10);
+
+        doc.setFont(undefined, 'bold');
+        doc.text('Instance #', 14, y);
+        doc.text('Tooth', 60, y);
+        doc.text('Vendor', 85, y);
+        doc.text('Angle (°)', 140, y);
+        doc.setFont(undefined, 'normal');
+        y += lineH - 2;
+        doc.line(14, y, 196, y);
+        y += lineH;
+
+        for (const r of job.calculateAngles.instance_results) {
+          checkPage();
+          const tooth = toothInstanceMap[r.instance_index];
+          const inst = job.summary?.instances?.find((i) => i.index === r.instance_index);
+          doc.text(`#${r.instance_index}`, 14, y);
+          doc.text(tooth ? `#${tooth}` : '-', 60, y);
+          doc.text(inst?.vendor_name || inst?.vendor_id || '-', 85, y);
+          doc.text(`${Number(r.angle).toFixed(2)}°`, 140, y);
+          y += lineH;
+        }
+        y += lineH;
+      }
+
+      // Correctors table
+      if (job.placeCorrectors?.instance_correctors?.length) {
+        checkPage();
+        doc.setFontSize(13);
+        doc.text('Angle Correctors', 14, y);
+        y += lineH + 2;
+        doc.setFontSize(10);
+
+        doc.setFont(undefined, 'bold');
+        doc.text('Instance #', 14, y);
+        doc.text('Tooth', 60, y);
+        doc.text('Corrector #', 85, y);
+        doc.text('Angle (°)', 140, y);
+        doc.setFont(undefined, 'normal');
+        y += lineH - 2;
+        doc.line(14, y, 196, y);
+        y += lineH;
+
+        for (const c of job.placeCorrectors.instance_correctors) {
+          checkPage();
+          const tooth = toothInstanceMap[c.instance_index];
+          doc.text(`#${c.instance_index}`, 14, y);
+          doc.text(tooth ? `#${tooth}` : '-', 60, y);
+          doc.text(String(c.corrector_index).padStart(2, '0'), 85, y);
+          doc.text(`${Number(c.angle).toFixed(2)}°`, 140, y);
+          y += lineH;
+        }
+      }
+
+      const pdfBlob = doc.output('blob');
+      zip.file('report/angles_labels_report.pdf', pdfBlob);
+
+      // Generate and download the zip
+      const zipBlob = await zip.generateAsync({ type: 'blob' });
+      const { saveAs } = await import('file-saver');
+      saveAs(zipBlob, `alignment_results_${caseId || 'case'}.zip`);
+      onDownloadComplete?.();
+    } catch (err) {
+      console.error('Download failed:', err);
+    } finally {
+      setIsDownloading(false);
     }
   };
 
   return (
     <Stack spacing={{ xs: 2, sm: 3 }}>
-      {/* Summary Header */}
-      <Card
-        elevation={0}
-        sx={{
-          background: 'linear-gradient(135deg, rgba(76, 175, 80, 0.1) 0%, rgba(33, 150, 243, 0.1) 100%)',
-          border: '1px solid',
-          borderColor: 'success.main',
-          borderRadius: 3,
-        }}
-      >
-        <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
-          <Stack spacing={{ xs: 1.5, sm: 2 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <CheckCircleIcon sx={{ color: 'success.main', fontSize: { xs: 28, sm: 32 } }} />
-              <Typography variant="h5" sx={{ fontWeight: 700, fontSize: { xs: '1.25rem', sm: '1.5rem' } }}>
-                Analysis Complete!
-              </Typography>
-            </Box>
-
-            {/* One tile, not two. The second showed a hardcoded "10.2s"
-                processing time — the alignment service does not report timing,
-                so there was no real value to put there. */}
-            <Grid container spacing={{ xs: 1.5, sm: 2 }}>
-              <Grid size={{ xs: 12 }}>
-                <Paper
-                  elevation={0}
-                  sx={{
-                    p: { xs: 1.5, sm: 2 },
-                    bgcolor: 'background.default',
-                    borderRadius: 2,
-                    textAlign: 'center',
-                  }}
-                >
-                  <Typography variant="h3" color="primary" sx={{ fontWeight: 700, fontSize: { xs: '2rem', sm: '3rem' } }}>
-                    {job.summary.instances.length}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
-                    Implants Detected
-                  </Typography>
-                </Paper>
-              </Grid>
-            </Grid>
-
-            <Stack direction="column" spacing={1} sx={{ mt: 1 }}>
-              <Button
-                onClick={handleDownloadAll}
-                variant="contained"
-                startIcon={<DownloadIcon />}
-                fullWidth
-                sx={{
-                  py: { xs: 1, sm: 1.2 },
-                  borderRadius: 2,
-                  fontWeight: 600,
-                  fontSize: { xs: '0.875rem', sm: '1rem' },
-                }}
-              >
-                Download All Results
-              </Button>
-
-              {/* {job.calculateAngles?.reference_plane_cube_path && (
-                <Button
-                  onClick={() => saveAs(fileUrl(job.calculateAngles.reference_plane_cube_path), 'calculated_reference_plane_cube.stl')}
-                  variant="outlined"
-                  fullWidth
-                  sx={{
-                    py: { xs: 1, sm: 1.2 },
-                    borderRadius: 2,
-                    fontWeight: 600,
-                    fontSize: { xs: '0.875rem', sm: '1rem' },
-                  }}
-                >
-                  Download Plane Cube
-                </Button>
-              )} */}
-
-              {/* {job.calculateAngles?.insertion_axis_cube_and_analogs_path && (
-                <Button
-                  onClick={() => saveAs(fileUrl(job.calculateAngles.insertion_axis_cube_and_analogs_path), 'insertion_axis_cube_and_analogs.stl')}
-                  variant="outlined"
-                  fullWidth
-                  sx={{
-                    py: { xs: 1, sm: 1.2 },
-                    borderRadius: 2,
-                    fontWeight: 600,
-                    fontSize: { xs: '0.875rem', sm: '1rem' },
-                  }}
-                >
-                  Download Cube + Analogs
-                </Button>
-              )} */}
-
-              {!job.calculateAngles?.instance_results && (
-                <Button
-                  onClick={onCalculateAngles}
-                  variant="contained"
-                  color="primary"
-                  fullWidth
-                  disabled={!!isCalculatingAngles}
-                  sx={{
-                    py: { xs: 1, sm: 1.2 },
-                    borderRadius: 2,
-                    fontWeight: 700,
-                    fontSize: { xs: '0.875rem', sm: '1rem' },
-                  }}
-                >
-                  {isCalculatingAngles ? (
-                    <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 1 }}>
-                      <CircularProgress size={18} color="inherit" />
-                      Calculating…
-                    </Box>
-                  ) : (
-                    'Calculate Insertion Axis'
-                  )}
-                </Button>
-              )}
-
-              {job.calculateAngles?.instance_results && !job.placeCorrectors?.instance_correctors && (
-                <Button
-                  onClick={onPlaceAngleCorrectors}
-                  variant="contained"
-                  color="primary"
-                  fullWidth
-                  disabled={!!isPlacingCorrectors}
-                  sx={{
-                    py: { xs: 1, sm: 1.2 },
-                    borderRadius: 2,
-                    fontWeight: 700,
-                    fontSize: { xs: '0.875rem', sm: '1rem' },
-                  }}
-                >
-                  {isPlacingCorrectors ? (
-                    <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 1 }}>
-                      <CircularProgress size={18} color="inherit" />
-                      Placing…
-                    </Box>
-                  ) : (
-                    'Place Angle Correctors'
-                  )}
-                </Button>
-              )}
-
-              {/* {job.placeCorrectors?.final_with_correctors_path && (
-                <Button
-                  onClick={() => saveAs(fileUrl(job.placeCorrectors.final_with_correctors_path), 'final_with_angle_correctors.ply')}
-                  variant="outlined"
-                  fullWidth
-                  sx={{
-                    py: { xs: 1, sm: 1.2 },
-                    borderRadius: 2,
-                    fontWeight: 600,
-                    fontSize: { xs: '0.875rem', sm: '1rem' },
-                  }}
-                >
-                  Download Mesh with Correctors
-                </Button>
-              )} */}
-            </Stack>
-          </Stack>
-        </CardContent>
-      </Card>
-
       {/* Add a missed instance: click in 3D viewer, then search.
           Only shown BEFORE the user runs /calculate-angles. After angles are
           calculated, adding/deleting instances would invalidate them — the
@@ -536,6 +621,117 @@ export default function ResultsDisplay({
           </CardContent>
         </Card>
       )}
+
+      {/* Summary Header (moved below Deviation card) */}
+      <Card
+        elevation={0}
+        sx={{
+          background: 'linear-gradient(135deg, rgba(76, 175, 80, 0.1) 0%, rgba(33, 150, 243, 0.1) 100%)',
+          border: '1px solid',
+          borderColor: 'success.main',
+          borderRadius: 3,
+        }}
+      >
+        <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
+          <Stack spacing={{ xs: 1.5, sm: 2 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <CheckCircleIcon sx={{ color: 'success.main', fontSize: { xs: 28, sm: 32 } }} />
+              <Typography className='text-black' variant="h5" sx={{ fontWeight: 700, fontSize: { xs: '1.25rem', sm: '1.5rem' } }}>
+                Analysis Complete!
+              </Typography>
+            </Box>
+
+            <Grid container spacing={{ xs: 1.5, sm: 2 }}>
+              <Grid size={{ xs: 12 }}>
+                <Paper
+                  elevation={0}
+                  sx={{
+                    p: { xs: 1.5, sm: 2 },
+                    bgcolor: 'background.default',
+                    borderRadius: 2,
+                    textAlign: 'center',
+                  }}
+                >
+                  <Typography variant="h3" color="primary" sx={{ fontWeight: 700, fontSize: { xs: '2rem', sm: '3rem' } }}>
+                    {job.summary.instances.length}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
+                    Implants Detected
+                  </Typography>
+                </Paper>
+              </Grid>
+            </Grid>
+
+            <Stack direction="column" spacing={1} sx={{ mt: 1 }}>
+              <Button
+                onClick={handleDownloadAll}
+                variant="contained"
+                startIcon={isDownloading ? <CircularProgress size={18} color="inherit" /> : <DownloadIcon />}
+                fullWidth
+                disabled={isDownloading}
+                sx={{
+                  py: { xs: 1, sm: 1.2 },
+                  borderRadius: 2,
+                  fontWeight: 600,
+                  fontSize: { xs: '0.875rem', sm: '1rem' },
+                }}
+              >
+                {isDownloading ? 'Packaging Results…' : 'Download All Results'}
+              </Button>
+
+              {!job.calculateAngles?.instance_results && (
+                <Button
+                  onClick={onCalculateAngles}
+                  variant="contained"
+                  color="primary"
+                  fullWidth
+                  disabled={!!isCalculatingAngles}
+                  sx={{
+                    py: { xs: 1, sm: 1.2 },
+                    borderRadius: 2,
+                    fontWeight: 700,
+                    fontSize: { xs: '0.875rem', sm: '1rem' },
+                  }}
+                >
+                  {isCalculatingAngles ? (
+                    <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 1 }}>
+                      <CircularProgress size={18} color="inherit" />
+                      Calculating…
+                    </Box>
+                  ) : (
+                    'Calculate Insertion Axis'
+                  )}
+                </Button>
+              )}
+
+              {job.calculateAngles?.instance_results && !job.placeCorrectors?.instance_correctors && (
+                <Button
+                  onClick={onPlaceAngleCorrectors}
+                  variant="contained"
+                  color="primary"
+                  fullWidth
+                  disabled={!!isPlacingCorrectors}
+                  sx={{
+                    py: { xs: 1, sm: 1.2 },
+                    borderRadius: 2,
+                    fontWeight: 700,
+                    fontSize: { xs: '0.875rem', sm: '1rem' },
+                  }}
+                >
+                  {isPlacingCorrectors ? (
+                    <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 1 }}>
+                      <CircularProgress size={18} color="inherit" />
+                      Placing…
+                    </Box>
+                  ) : (
+                    'Place Angle Correctors'
+                  )}
+                </Button>
+              )}
+            </Stack>
+          </Stack>
+        </CardContent>
+      </Card>
 
       {/* Selected Angle Correctors */}
       {/* {job.placeCorrectors?.instance_correctors && (
