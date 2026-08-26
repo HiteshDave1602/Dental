@@ -31,6 +31,10 @@ export const useCaseStore = create(
       // { [toothNumber]: { company_name, library_id, angle_alignment, manufacturer_id } }
       toothAssignments: {},
 
+      // Pathfinder Phase C: maps a detected implant instance to the tooth it
+      // sits at. { [instanceIndex]: toothNumber }
+      toothInstanceMap: {},
+
       // ── Actions ──────────────────────────────────────────────────────────────
       setStep: (step) => set({ currentStep: step }),
 
@@ -86,6 +90,38 @@ export const useCaseStore = create(
           toothBrandSelections: {}, toothAngleSelections: {}, toothAssignments: {},
         }),
 
+      setToothInstanceMap: (map) => set({ toothInstanceMap: map }),
+
+      assignToothToInstance: (instanceIndex, toothNumber) =>
+        set((s) => ({
+          toothInstanceMap: {
+            ...s.toothInstanceMap,
+            [instanceIndex]: toothNumber,
+          },
+        })),
+
+      clearToothInstanceMap: () => set({ toothInstanceMap: {} }),
+
+      resumeCase: (caseData) =>
+        set({
+          currentStep: caseData.current_step || 1,
+          caseId: caseData.id,
+          caseRef: caseData.case_reference,
+          patientData: {
+            fullName: caseData.patient_name || '',
+            age: caseData.patient_age?.toString() || '',
+            caseDate: caseData.case_date || today(),
+            notes: caseData.doctor_notes || '',
+          },
+          selectedVendorIds: caseData.selected_vendor_ids || [],
+          selectedTeeth: [],
+          activeTooth: null,
+          toothBrandSelections: {},
+          toothAngleSelections: {},
+          toothAssignments: {},
+          toothInstanceMap: {},
+        }),
+
       resetCase: () =>
         set({
           currentStep: 1,
@@ -98,6 +134,7 @@ export const useCaseStore = create(
           toothBrandSelections: {},
           toothAngleSelections: {},
           toothAssignments: {},
+          toothInstanceMap: {},
         }),
     }),
     {
@@ -113,6 +150,7 @@ export const useCaseStore = create(
         toothBrandSelections: s.toothBrandSelections,
         toothAngleSelections: s.toothAngleSelections,
         toothAssignments: s.toothAssignments,
+        toothInstanceMap: s.toothInstanceMap,
       }),
     }
   )

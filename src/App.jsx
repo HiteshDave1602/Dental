@@ -133,7 +133,7 @@ function App() {
   return (
     <Router>
       <RootRouter />
-      <ToastContainer position="bottom-right" autoClose={4000} />
+      <ToastContainer position="top-right" autoClose={4000} />
     </Router>
   );
 }

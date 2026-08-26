@@ -81,7 +81,7 @@ const apiClient = axios.create({
 });
 
 export const notifyError = (text, backgroundColor = '#FEE2E2', color = '#B91C1C') => toast.error(text, {
-    position: 'bottom-right',
+    position: 'top-right',
     style: {
         backgroundColor,
         color,
@@ -89,7 +89,7 @@ export const notifyError = (text, backgroundColor = '#FEE2E2', color = '#B91C1C'
 });
 
 export const notifySuccess = (text, backgroundColor = '#DCFCE7', color = '#166534') => toast.success(text, {
-    position: 'bottom-right',
+    position: 'top-right',
     style: {
         backgroundColor,
         color,

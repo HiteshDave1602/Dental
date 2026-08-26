@@ -1,6 +1,8 @@
 import { Fragment, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ChevronDown, ChevronUp, Search } from 'lucide-react';
 import api, { notifyError } from '../../Script/api';
+import { useCaseStore } from '../../store/caseStore';
 
 const STATUS_CLASS = {
   completed: 'bg-[#159FE8] text-white border-[#159FE8] shadow-sm shadow-[#159FE8]/40',
@@ -16,12 +18,16 @@ const TOLERANCE_CLASS = {
 };
 
 const EmployeeMyCases = () => {
+  const navigate = useNavigate();
+  const resumeCase = useCaseStore((s) => s.resumeCase);
+
   const [cases, setCases] = useState([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [page, setPage] = useState(1);
+  const [resumingId, setResumingId] = useState(null);
 
   // Alignment results per case, loaded on demand. Previously this page showed
   // nothing about a case's analysis at all — the review workflow's output was
@@ -43,6 +49,22 @@ const EmployeeMyCases = () => {
       setResults((prev) => ({ ...prev, [caseId]: res.data?.data ?? res.data ?? 'none' }));
     } catch {
       setResults((prev) => ({ ...prev, [caseId]: 'none' }));
+    }
+  };
+
+  const handleResumeCase = async (e, row) => {
+    e.stopPropagation();
+    if (row.status === 'completed') return;
+    setResumingId(row.id);
+    try {
+      const res = await api.employee.cases.get(row.id);
+      const caseData = res.data?.data || res.data;
+      resumeCase(caseData);
+      navigate('/new-case');
+    } catch {
+      notifyError('Failed to load case. Please try again.');
+    } finally {
+      setResumingId(null);
     }
   };
 
@@ -127,17 +149,30 @@ const EmployeeMyCases = () => {
         ) : (
           <>
             <div className="grid grid-cols-1 gap-3 p-3 md:hidden">
-              {cases.map((row) => (
-                <article key={row.id} className="rounded-xl border border-[#9cd5ff] bg-[#c1e5ff]/30 p-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="text-sm text-[#12344D] font-semibold">{row.case_reference}</p>
-                    <span className={`text-xs px-2 py-1 rounded-full border ${STATUS_CLASS[row.status] || 'border-[#9cd5ff] text-[#12344D]/60'}`}>{row.status}</span>
-                  </div>
-                  <p className="text-sm text-[#12344D]/80 mt-2">{row.patient_name} · Age {row.patient_age}</p>
-                  <p className="text-xs text-[#12344D]/60 mt-1">Teeth: {(row.teeth || []).map((t) => t.tooth_number).join(', ') || '—'}</p>
-                  <p className="text-xs text-[#12344D]/60 mt-1">Date: {row.case_date || '—'}</p>
-                </article>
-              ))}
+              {cases.map((row) => {
+                const isResumable = row.status !== 'completed';
+                const isResuming = resumingId === row.id;
+                return (
+                  <article
+                    key={row.id}
+                    onClick={isResumable ? (e) => handleResumeCase(e, row) : undefined}
+                    className={`rounded-xl border border-[#9cd5ff] bg-[#c1e5ff]/30 p-3 ${isResumable ? 'cursor-pointer hover:bg-[#c1e5ff]/55 transition-colors' : ''}`}
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-sm text-[#12344D] font-semibold">{row.case_reference}</p>
+                      <span className={`text-xs px-2 py-1 rounded-full border ${STATUS_CLASS[row.status] || 'border-[#9cd5ff] text-[#12344D]/60'}`}>{row.status}</span>
+                    </div>
+                    <p className="text-sm text-[#12344D]/80 mt-2">{row.patient_name} · Age {row.patient_age}</p>
+                    <p className="text-xs text-[#12344D]/60 mt-1">Teeth: {(row.teeth || []).map((t) => t.tooth_number).join(', ') || '—'}</p>
+                    <p className="text-xs text-[#12344D]/60 mt-1">Date: {row.case_date || '—'}</p>
+                    {isResumable && (
+                      <p className="text-xs text-[#072ac8] font-semibold mt-2">
+                        {isResuming ? 'Loading…' : 'Resume →'}
+                      </p>
+                    )}
+                  </article>
+                );
+              })}
             </div>
 
             <table className="hidden md:table w-full table-fixed">
@@ -156,9 +191,14 @@ const EmployeeMyCases = () => {
                 {cases.map((row) => {
                   const analysis = results[row.id];
                   const isOpen = expanded === row.id;
+                  const isResumable = row.status !== 'completed';
+                  const isResuming = resumingId === row.id;
                   return (
                     <Fragment key={row.id}>
-                      <tr className="border-t border-[#9cd5ff]/40 hover:bg-[#c1e5ff]/35">
+                      <tr
+                        onClick={isResumable ? (e) => handleResumeCase(e, row) : undefined}
+                        className={`border-t border-[#9cd5ff]/40 ${isResumable ? 'cursor-pointer hover:bg-[#c1e5ff]/55 transition-colors' : 'hover:bg-[#c1e5ff]/35'}`}
+                      >
                         <td className="p-3 text-[#12344D] break-words font-semibold">{row.case_reference}</td>
                         <td className="p-3 text-[#12344D]/80 break-words">{row.patient_name}</td>
                         <td className="p-3 text-[#12344D]/80">{row.patient_age}</td>
@@ -170,14 +210,20 @@ const EmployeeMyCases = () => {
                           </span>
                         </td>
                         <td className="p-3">
-                          <button
-                            type="button"
-                            onClick={() => toggleResults(row.id)}
-                            className="text-xs text-[#072ac8] hover:text-[#0a2472] inline-flex items-center gap-1"
-                          >
-                            {isOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                            {isOpen ? 'Hide' : 'View'} angles
-                          </button>
+                          {isResumable ? (
+                            <span className="text-xs text-[#072ac8] font-semibold">
+                              {isResuming ? 'Loading…' : 'Resume →'}
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); toggleResults(row.id); }}
+                              className="text-xs text-[#072ac8] hover:text-[#0a2472] inline-flex items-center gap-1"
+                            >
+                              {isOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                              {isOpen ? 'Hide' : 'View'} angles
+                            </button>
+                          )}
                         </td>
                       </tr>
 

@@ -1,65 +1,159 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
+import { Eye, Smile, X } from 'lucide-react';
 import { cn } from '../../utils/utils';
-import { getToothLabel, getToothType, lowerTeeth, upperTeeth } from '../utils/teeth';
 
-const shapeByType = {
-  molar: 'M12 2 C4 2, 2 7, 2 12 C2 18, 6 22, 12 22 C18 22, 22 18, 22 12 C22 7, 20 2, 12 2 Z',
-  premolar: 'M12 3 C6 3, 4 8, 4 12 C4 17, 7 21, 12 21 C17 21, 20 17, 20 12 C20 8, 18 3, 12 3 Z',
-  canine: 'M12 2 L18 9 C19 12, 18 17, 15 20 C13 22, 11 22, 9 20 C6 17, 5 12, 6 9 Z',
-  incisor: 'M7 3 H17 C19 3, 20 6, 20 8 V14 C20 18, 16 22, 12 22 C8 22, 4 18, 4 14 V8 C4 6, 5 3, 7 3 Z',
-};
+// FDI notation, as drawn in the standard quadrant chart: Upper Right (18→11)
+// next to Upper Left (21→28); Lower Right (48→41) next to Lower Left (31→38).
+const upperTeeth = ['18', '17', '16', '15', '14', '13', '12', '11', '21', '22', '23', '24', '25', '26', '27', '28'];
+const lowerTeeth = ['48', '47', '46', '45', '44', '43', '42', '41', '31', '32', '33', '34', '35', '36', '37', '38'];
 
-const Tooth = ({ id, selected, onToggle }) => {
-  const type = getToothType(id);
-  return (
-    <button
-      title={getToothLabel(id)}
-      onClick={() => onToggle(id)}
-      className="flex flex-col items-center gap-1"
-      type="button"
-    >
-      <svg viewBox="0 0 24 24" className="h-10 w-10">
-        <path
-          d={shapeByType[type]}
-          className={cn(
-            'transition-all duration-200',
-            selected ? 'fill-[#6ab0e3] stroke-[#072ac8] drop-shadow-[0_0_10px_rgba(106,176,227,.8)]' : 'fill-transparent stroke-[#9cd5ff] hover:stroke-[#072ac8]'
-          )}
-          strokeWidth="1.2"
-        />
-      </svg>
-      <span className={cn('text-[11px]', selected ? 'text-[#072ac8] font-semibold' : 'text-[#12344D]/60')}>{id}</span>
-    </button>
-  );
-};
+// Tap a tooth, then pick its instance from the panel that appears below —
+// hovering an instance option there also asks the 3D viewer to highlight that
+// instance's mesh (scan body included), so the user can see exactly which
+// implant they're about to place before committing to a tooth.
+const ToothChart = ({ instances = [], toothInstanceMap = {}, onAssignInstance, onPreviewInstance }) => {
+  const [activeTooth, setActiveTooth] = useState(null);
 
-const ToothChart = ({ selectedTeeth, onToggle, onClear }) => {
-  const selectedList = useMemo(() => [...selectedTeeth].sort((a, b) => Number(a) - Number(b)), [selectedTeeth]);
+  const toothToInstance = useMemo(() => {
+    const map = {};
+    Object.entries(toothInstanceMap).forEach(([idx, tooth]) => { if (tooth) map[tooth] = Number(idx); });
+    return map;
+  }, [toothInstanceMap]);
+  const assignedInstanceIndexes = useMemo(() => new Set(Object.keys(toothInstanceMap).map(Number)), [toothInstanceMap]);
 
-  return (
-    <div>
+  const assignedCount = Object.keys(toothInstanceMap).length;
+  const totalInstances = instances.length;
+  const progressPct = totalInstances ? Math.round((assignedCount / totalInstances) * 100) : 0;
+  const activeInstance = activeTooth ? toothToInstance[activeTooth] : undefined;
+  const options = activeTooth
+    ? instances.filter((inst) => !assignedInstanceIndexes.has(inst.index) || inst.index === activeInstance)
+    : [];
 
+  const handleAssign = (instanceIndex) => {
+    onAssignInstance(activeTooth, instanceIndex);
+    setActiveTooth(null);
+    onPreviewInstance?.(null);
+  };
+
+  const renderRow = (ids) => (
+    <div className="grid grid-cols-8 gap-1.5">
+      {ids.map((id) => {
+        const inst = toothToInstance[id];
+        const isAssigned = inst !== undefined;
+        const isActive = activeTooth === id;
+        return (
+          <button
+            key={id}
+            type="button"
+            onClick={() => setActiveTooth((prev) => (prev === id ? null : id))}
+            className={cn(
+              'relative h-8 rounded-xl border text-[10px] font-bold flex items-center justify-center shadow-sm transition-all duration-150 hover:scale-[1.08] active:scale-95',
+              isAssigned
+                ? 'bg-gradient-to-br from-emerald-400 to-emerald-600 border-emerald-600 text-white shadow-emerald-500/30'
+                : isActive
+                  ? 'bg-gradient-to-br from-[#6ab0e3] to-[#072ac8] border-[#072ac8] text-white ring-2 ring-[#072ac8]/30 scale-105'
+                  : 'bg-white border-[#9cd5ff] text-[#12344D]/70 hover:border-[#072ac8] hover:text-[#072ac8]'
+            )}
+          >
+            {id}
+            {isAssigned && (
+              <span className="absolute -top-2 -right-2 h-4 w-4 rounded-full bg-[#15803d] text-white text-[8px] font-bold flex items-center justify-center border-2 border-white shadow">
+                {inst}
+              </span>
+            )}
+          </button>
+        );
+      })}
     </div>
-    // <div className="glass-card p-4 space-y-4">
-    //   <h3 className="employee-heading text-base text-[#12344D]">Select Affected Teeth</h3>
-    //   <p className="text-xs text-[#12344D]/60">Upper Jaw</p>
-    //   <div className="grid grid-cols-8 gap-2">
-    //     {upperTeeth.map((id) => <Tooth key={id} id={id} selected={selectedTeeth.includes(id)} onToggle={onToggle} />)}
-    //   </div>
-    //   <p className="text-xs text-[#12344D]/60 pt-2">Lower Jaw</p>
-    //   <div className="grid grid-cols-8 gap-2">
-    //     {lowerTeeth.map((id) => <Tooth key={id} id={id} selected={selectedTeeth.includes(id)} onToggle={onToggle} />)}
-    //   </div>
-    //   <div className="flex items-center justify-between pt-2">
-    //     <div className="flex flex-wrap gap-2">
-    //       {selectedList.length ? selectedList.map((id) => (
-    //         <span key={id} className="px-2 py-1 rounded-full bg-[#c1e5ff] text-[#0a2472] border border-[#6ab0e3] text-xs">{id}</span>
-    //       )) : <span className="text-xs text-[#12344D]/50">No teeth selected</span>}
-    //     </div>
-    //     <button type="button" onClick={onClear} className="text-xs text-[#072ac8] font-semibold hover:underline">Clear Selection</button>
-    //   </div>
-    // </div>
+  );
+
+  return (
+    <div className="glass-card p-3.5 space-y-3 overflow-hidden">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-[#6ab0e3] to-[#072ac8] text-white shadow-sm">
+            <Smile size={14} />
+          </span>
+          <h3 className="employee-heading text-sm text-[#12344D]">Assign Teeth</h3>
+        </div>
+        <span
+          className={cn(
+            'text-[11px] font-bold px-2 py-0.5 rounded-full shrink-0',
+            assignedCount === totalInstances && totalInstances > 0
+              ? 'bg-emerald-100 text-emerald-700'
+              : 'bg-[#c1e5ff]/60 text-[#072ac8]'
+          )}
+        >
+          {assignedCount} / {totalInstances}
+        </span>
+      </div>
+
+      <div className="h-1.5 w-full rounded-full bg-[#e3f2ff] overflow-hidden">
+        <div
+          className="h-full rounded-full bg-gradient-to-r from-[#6ab0e3] to-emerald-500 transition-all duration-300"
+          style={{ width: `${progressPct}%` }}
+        />
+      </div>
+
+      <p className="text-[10px] text-[#12344D]/60">Tap a tooth, then pick its instance below.</p>
+
+      <div className="space-y-1.5">
+        <p className="text-[9px] font-semibold uppercase tracking-wide text-[#072ac8]/70">Upper Jaw · Right 18→11 · Left 21→28</p>
+        {renderRow(upperTeeth)}
+      </div>
+      <div className="space-y-1.5">
+        <p className="text-[9px] font-semibold uppercase tracking-wide text-[#072ac8]/70">Lower Jaw · Right 48→41 · Left 31→38</p>
+        {renderRow(lowerTeeth)}
+      </div>
+
+      {activeTooth && (
+        <div className="rounded-xl border border-[#9cd5ff] bg-gradient-to-br from-[#f6fbfe] to-[#eaf6ff] p-2.5 space-y-2 shadow-inner">
+          <div className="flex items-center justify-between">
+            <p className="text-[11px] font-bold text-[#12344D]">Tooth {activeTooth}</p>
+            {options.length > 0 && (
+              <span className="flex items-center gap-1 text-[9px] text-[#12344D]/50">
+                <Eye size={11} /> hover to preview
+              </span>
+            )}
+          </div>
+          {options.length === 0 ? (
+            <p className="text-[10px] text-[#12344D]/60">All instances are already assigned elsewhere.</p>
+          ) : (
+            <div className="flex flex-wrap gap-1.5">
+              {options.map((inst) => (
+                <button
+                  key={inst.index}
+                  type="button"
+                  onMouseEnter={() => onPreviewInstance?.(inst.index)}
+                  onMouseLeave={() => onPreviewInstance?.(null)}
+                  onFocus={() => onPreviewInstance?.(inst.index)}
+                  onBlur={() => onPreviewInstance?.(null)}
+                  onClick={() => handleAssign(inst.index)}
+                  className={cn(
+                    'text-[10px] font-semibold px-2.5 py-1 rounded-full border transition-all',
+                    inst.index === activeInstance
+                      ? 'bg-gradient-to-r from-[#6ab0e3] to-[#072ac8] text-white border-transparent shadow-sm'
+                      : 'border-[#9cd5ff] text-[#12344D] hover:bg-[#c1e5ff]/50 hover:border-[#072ac8]'
+                  )}
+                >
+                  #{inst.index}{inst.vendor_name ? ` · ${inst.vendor_name}` : ''}
+                </button>
+              ))}
+            </div>
+          )}
+          {activeInstance !== undefined && (
+            <button
+              type="button"
+              onClick={() => handleAssign(null)}
+              className="inline-flex items-center gap-1 text-[10px] font-semibold text-rose-600 hover:text-rose-700"
+            >
+              <X size={11} /> Remove assignment
+            </button>
+          )}
+        </div>
+      )}
+    </div>
   );
 };
 
-export default ToothChart;  
+export default ToothChart;
