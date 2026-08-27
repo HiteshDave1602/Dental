@@ -91,10 +91,13 @@ const EmployeeSubscription = () => {
 
       <section className="glass-card overflow-hidden">
         <div className="px-4 py-3 border-b border-[#9cd5ff]/40 bg-[#f6fbfe]">
-          <h3 className="employee-heading text-[#12344D]">Payment History</h3>
+          <h3 className="employee-heading text-[#12344D]">Transaction History</h3>
         </div>
         <div className="p-4 text-sm text-[#12344D]/60">
-          Payment history will appear here after your first transaction.
+          View your full credit transaction history on the{' '}
+          <a href="/profile" className="font-semibold text-[#072ac8] underline decoration-[#9cd5ff] underline-offset-4 hover:text-[#12344D]">
+            Profile page
+          </a>.
         </div>
       </section>
     </div>

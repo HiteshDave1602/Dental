@@ -442,6 +442,9 @@ const api = {
             plans: async () => employeeService.get('/user/subscription/plans'),
             usage: async () => employeeService.get('/user/subscription/usage'),
         },
+        credits: {
+            transactions: async (params) => employeeService.get('/user/credits/transactions', params),
+        },
     },
 };
 
