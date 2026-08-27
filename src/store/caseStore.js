@@ -10,6 +10,7 @@ export const useCaseStore = create(
     (set, get) => ({
       // ── Workflow ─────────────────────────────────────────────────────────────
       currentStep: 1,
+      isResuming: false, // transient — NOT persisted; set by resumeCase, cleared on unmount
 
       // ── Patient / Case ───────────────────────────────────────────────────────
       patientData: DEFAULT_PATIENT,
@@ -104,6 +105,7 @@ export const useCaseStore = create(
 
       resumeCase: (caseData) =>
         set({
+          isResuming: true,
           currentStep: caseData.current_step || 1,
           caseId: caseData.id,
           caseRef: caseData.case_reference,
@@ -124,6 +126,7 @@ export const useCaseStore = create(
 
       resetCase: () =>
         set({
+          isResuming: false,
           currentStep: 1,
           patientData: { ...DEFAULT_PATIENT, caseDate: today() },
           caseId: null,

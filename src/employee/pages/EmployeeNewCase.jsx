@@ -69,12 +69,35 @@ const EmployeeNewCase = () => {
     caseId,
     caseRef,
     selectedVendorIds,
+    isResuming,
     setStep,
     setPatientData,
     setCaseCreated,
     setSelectedVendorIds,
     resetCase,
   } = useCaseStore();
+
+  // ── Mount guard ────────────────────────────────────────────────────────────
+  // The store is persisted to localStorage, so a direct visit or page refresh
+  // on /new-case restores whatever step/caseId was left behind.  We only allow
+  // that old state through when the user explicitly clicked "Resume" (which
+  // sets isResuming=true in the store before navigating here).  Otherwise
+  // force the store back to a clean step-1 slate *before* rendering the wizard.
+  const [hydrated, setHydrated] = useState(false);
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!isResuming && (currentStep !== 1 || caseId)) {
+      resetCase();
+      setPatient({ fullName: '', age: '', caseDate: new Date().toISOString().split('T')[0], notes: '' });
+    }
+    setHydrated(true);
+  }, []);
+
+  // Clear the transient isResuming flag when leaving this page so the next
+  // visit always starts fresh.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => () => { useCaseStore.setState({ isResuming: false }); }, []);
 
   // ── Local (non-persisted) state ───────────────────────────────────────────
   const [patient, setPatient] = useState(patientData);
@@ -99,37 +122,12 @@ const EmployeeNewCase = () => {
   const [meshVisibility, setMeshVisibility] = useState({ patientScan: true, scanBody: true, analog: true });
   const [activeResultTooth, setActiveResultTooth] = useState(null);
 
-  // The step-3 rehydration effect that used to sit here has been removed.
-  //
-  // It fetched the case and `analysis/{id}/results` on every entry to step 3,
-  // but everything it populated (`caseData`, `analysisResult` and the values
-  // derived from them) is read by nothing: step 3 returns early into
-  // PathfinderWorkflow, which loads its own state from the case's alignment job.
-  //
-  // Because analysis results only exist AFTER the review is completed, that
-  // request 404'd every single time a case reached step 3 — a red 404 in the
-  // console and network tab on the normal, healthy path, for data nobody
-  // rendered. The handler swallowed the 404 deliberately, so it was noise rather
-  // than a fault, but noise that looked exactly like a fault while people were
-  // testing.
-
-  // Restore persisted patient data on first mount only
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { setPatient(patientData); }, []);
-
-  // Sync local patient state → store whenever it changes (avoids setState-in-render)
-  useEffect(() => {
-    setPatientData(patient);
-  }, [patient, setPatientData]);
-
   // ── Derived state ─────────────────────────────────────────────────────────
   const step1Valid = useMemo(() => {
     const errors = validatePatient(patient);
     return Object.keys(errors).length === 0;
   }, [patient]);
 
-  // This button only pushes the selected scan and advances the server-side
-  // wizard step; tooth/library assignment is intentionally not posted here.
   const canGoToStep3 = Boolean(upload);
   const step2NextTitle = !caseId
     ? 'Case will be created before upload'
@@ -147,9 +145,6 @@ const EmployeeNewCase = () => {
     )
     : null;
 
-  // Match each analysis result row to the tooth that was assigned to that
-  // vendor's library (results carry `tooth_number`, assigned client-side by
-  // the backend when it matched detected instances to teeth).
   const resultByTooth = useMemo(() => {
     const map = {};
     (analysisResult?.results || []).forEach((r) => { map[r.tooth_number] = r; });
@@ -158,11 +153,22 @@ const EmployeeNewCase = () => {
 
   // ── Handlers ──────────────────────────────────────────────────────────────
 
-  // Store sync is handled by the useEffect above — no Zustand calls inside setState
   const handlePatientChange = useCallback((field, value) => {
     setPatient((p) => ({ ...p, [field]: value }));
     setFieldErrors((e) => ({ ...e, [field]: undefined }));
   }, []);
+
+  // Restore persisted patient data on first mount only
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { setPatient(patientData); }, []);
+
+  // Sync local patient state → store whenever it changes (avoids setState-in-render)
+  useEffect(() => {
+    setPatientData(patient);
+  }, [patient, setPatientData]);
+
+  // All hooks declared — safe to early-return for hydration gate
+  if (!hydrated) return null;
 
   const handleStep1Next = async () => {
     const errors = validatePatient(patient);

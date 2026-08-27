@@ -16,7 +16,7 @@ import SpeedIcon from '@mui/icons-material/Speed';
 import SearchIcon from '@mui/icons-material/Search';
 import JSZip from 'jszip';
 import { jsPDF } from 'jspdf';
-import { assetUrl, extractErrorMessage } from '../../Script/api';
+import api, { assetUrl, extractErrorMessage } from '../../Script/api';
 
 // Artifact paths are NOT all relative — `artifacts.scene` is absolute, because
 // the compute service fetches that same signed URL. `assetUrl` prefixes only
@@ -445,6 +445,11 @@ export default function ResultsDisplay({
       const zipBlob = await zip.generateAsync({ type: 'blob' });
       const { saveAs } = await import('file-saver');
       saveAs(zipBlob, `alignment_results_${caseId || 'case'}.zip`);
+      // Mark the case as completed so it shows as done in the dashboard and
+      // My Cases. Best-effort: a failure here should not block the download.
+      if (caseId) {
+        api.employee.cases.update(caseId, { status: 'completed' }).catch(() => {});
+      }
       onDownloadComplete?.();
     } catch (err) {
       console.error('Download failed:', err);

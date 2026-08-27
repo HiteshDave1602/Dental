@@ -108,6 +108,10 @@ function TeethAssignmentPanel({ caseId, instances = [], onComplete, onPreviewIns
         instance_index: Number(instanceIndex),
       }));
       await api.employee.cases.addTeeth(caseId, teethArray);
+      // Mark the case as completed so it shows as done in the dashboard and
+      // My Cases. Best-effort: teeth are already saved, so a failure here
+      // should not block the user from finishing.
+      api.employee.cases.update(caseId, { status: 'completed' }).catch(() => {});
       // Mirrors every other phase transition in the wizard (steps 2/3/4 all
       // call updateStep on completion) — marks the case wizard as finished.
       // Best-effort: teeth are already saved, so a step-tracking hiccup here
@@ -137,7 +141,12 @@ function TeethAssignmentPanel({ caseId, instances = [], onComplete, onPreviewIns
         </p>
         <button
           type="button"
-          onClick={() => onComplete?.()}
+          onClick={() => {
+            if (caseId) {
+              api.employee.cases.update(caseId, { status: 'completed' }).catch(() => {});
+            }
+            onComplete?.();
+          }}
           className="gradient-btn h-9 w-full text-sm text-white font-semibold shadow-md shadow-[#072ac8]/20 hover:shadow-lg transition-shadow"
         >
           Finish
