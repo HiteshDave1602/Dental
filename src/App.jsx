@@ -14,6 +14,7 @@ import EmployeeLibrary from './employee/pages/EmployeeLibrary';
 import EmployeeSubscription from './employee/pages/EmployeeSubscription';
 import EmployeeSettings from './employee/pages/EmployeeSettings';
 import EmployeeProfile from './employee/pages/EmployeeProfile';
+import ResetPassword from './employee/pages/ResetPassword';
 import { DEMO_MODE } from './config/demoMode';
 import { useAuthStore } from './store/authStore';
 
@@ -84,7 +85,8 @@ const EmployeeAppRouter = () => {
 
   return (
     <Suspense fallback={<LoadingFallback />}>
-      <Routes>
+<Routes>
+        <Route path="/reset-password" element={<ResetPassword />} />
         {!canAccessApp ? (
           <>
             <Route path="/login" element={<EmployeeAuth />} />

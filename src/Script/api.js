@@ -400,6 +400,8 @@ const api = {
             login: async (payload) => employeeService.post('/user/auth/login', payload),
             logout: async () => employeeService.post('/user/auth/logout'),
             me: async () => employeeService.get('/user/auth/me'),
+            forgotPassword: async (payload) => employeeService.post('/user/auth/forgot-password', payload),
+            resetPassword: async (payload) => employeeService.post('/user/auth/reset-password', payload),
         },
         profile: {
             get: async () => employeeService.get('/user/profile'),
