@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../Script/api';
+import { useCaseStore } from '../../store/caseStore';
 
 const STATUS_CLASS = {
   completed: 'bg-[#159FE8] text-white border-[#159FE8] shadow-sm shadow-[#159FE8]/40',
@@ -20,9 +21,27 @@ const STATUS_CLASS = {
 
 const EmployeeDashboard = () => {
   const navigate = useNavigate();
+  const resumeCase = useCaseStore((s) => s.resumeCase);
+  const resetCase = useCaseStore((s) => s.resetCase);
   const [cases, setCases] = useState([]);
   const [stats, setStats] = useState({ total: 0, completed: 0, pending: 0, plan: 'free' });
   const [loading, setLoading] = useState(true);
+  const [resumingId, setResumingId] = useState(null);
+
+  const handleResumeCase = async (row) => {
+    if (row.status === 'completed') return;
+    setResumingId(row.id);
+    try {
+      const res = await api.employee.cases.get(row.id);
+      const caseData = res.data?.data || res.data;
+      resumeCase(caseData);
+      navigate('/new-case');
+    } catch {
+      // silently stay on dashboard
+    } finally {
+      setResumingId(null);
+    }
+  };
 
   useEffect(() => {
     let mounted = true;
@@ -123,7 +142,7 @@ const EmployeeDashboard = () => {
           </div>
           <button
             type="button"
-            onClick={() => navigate('/new-case')}
+            onClick={() => { resetCase(); navigate('/new-case'); }}
             className="inline-flex h-12 items-center justify-center gap-2 rounded-xl border border-[#9cd5ff]/45 bg-[#072ac8] px-6 font-semibold text-white shadow-lg shadow-[#072ac8]/35 transition-all hover:-translate-y-0.5 hover:bg-[#0a2472] focus:outline-none focus:ring-4 focus:ring-[#9cd5ff]/45"
           >
             <Plus size={18} /> New Case
@@ -221,32 +240,42 @@ const EmployeeDashboard = () => {
         ) : (
           <>
             <div className="grid grid-cols-1 gap-3 p-3 md:hidden">
-              {cases.map((row) => (
-                <article
-                  key={row.id}
-                  className="rounded-xl border border-[#9cd5ff]/55 bg-[#c1e5ff]/40 p-4"
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="text-sm font-semibold text-[#12344D]">{row.case_reference}</p>
-                    <span
-                      className={`rounded-full border px-2 py-1 text-xs ${
-                        STATUS_CLASS[row.status] || STATUS_CLASS.pending
-                      }`}
-                    >
-                      {row.status}
-                    </span>
-                  </div>
-                  <p className="mt-2 text-sm text-[#12344D]/80">
-                    {row.patient_name} · Age {row.patient_age}
-                  </p>
-                  <p className="mt-1 text-xs text-[#12344D]/60">
-                    Teeth: {(row.teeth || []).map((tooth) => tooth.tooth_number).join(', ') || '—'}
-                  </p>
-                  <p className="mt-1 text-xs text-[#12344D]/60">
-                    Date: {row.case_date || '—'}
-                  </p>
-                </article>
-              ))}
+              {cases.map((row) => {
+                const isResumable = row.status !== 'completed';
+                const isResuming = resumingId === row.id;
+                return (
+                  <article
+                    key={row.id}
+                    onClick={isResumable ? () => handleResumeCase(row) : undefined}
+                    className={`rounded-xl border border-[#9cd5ff]/55 bg-[#c1e5ff]/40 p-4 ${isResumable ? 'cursor-pointer hover:bg-[#c1e5ff]/65 transition-colors' : ''}`}
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-sm font-semibold text-[#12344D]">{row.case_reference}</p>
+                      <span
+                        className={`rounded-full border px-2 py-1 text-xs ${
+                          STATUS_CLASS[row.status] || STATUS_CLASS.pending
+                        }`}
+                      >
+                        {row.status}
+                      </span>
+                    </div>
+                    <p className="mt-2 text-sm text-[#12344D]/80">
+                      {row.patient_name} · Age {row.patient_age}
+                    </p>
+                    <p className="mt-1 text-xs text-[#12344D]/60">
+                      Teeth: {(row.teeth || []).map((tooth) => tooth.tooth_number).join(', ') || '—'}
+                    </p>
+                    <p className="mt-1 text-xs text-[#12344D]/60">
+                      Date: {row.case_date || '—'}
+                    </p>
+                    {isResumable && (
+                      <p className="text-xs text-[#072ac8] font-semibold mt-2">
+                        {isResuming ? 'Loading…' : 'Resume →'}
+                      </p>
+                    )}
+                  </article>
+                );
+              })}
             </div>
             <div className="hidden md:block">
               <table className="w-full table-fixed">
@@ -261,33 +290,44 @@ const EmployeeDashboard = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {cases.map((row) => (
-                    <tr
-                      key={row.id}
-                      className="border-t border-[#9cd5ff]/35 transition-colors hover:bg-[#c1e5ff]/35"
-                    >
-                      <td className="break-words p-4 font-semibold text-[#12344D]">
-                        {row.case_reference}
-                      </td>
-                      <td className="break-words p-4 text-[#12344D]/80">{row.patient_name}</td>
-                      <td className="p-4 text-[#12344D]/80">{row.patient_age}</td>
-                      <td className="break-words p-4 text-[#12344D]/80">
-                        {(row.teeth || []).map((tooth) => tooth.tooth_number).join(', ') || '—'}
-                      </td>
-                      <td className="break-words p-4 text-[#12344D]/80">
-                        {row.case_date || '—'}
-                      </td>
-                      <td className="p-4">
-                        <span
-                          className={`rounded-full border px-2 py-1 text-xs ${
-                            STATUS_CLASS[row.status] || STATUS_CLASS.pending
-                          }`}
-                        >
-                          {row.status}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
+                  {cases.map((row) => {
+                    const isResumable = row.status !== 'completed';
+                    const isResuming = resumingId === row.id;
+                    return (
+                      <tr
+                        key={row.id}
+                        onClick={isResumable ? () => handleResumeCase(row) : undefined}
+                        className={`border-t border-[#9cd5ff]/35 ${isResumable ? 'cursor-pointer hover:bg-[#c1e5ff]/55 transition-colors' : 'transition-colors hover:bg-[#c1e5ff]/35'}`}
+                      >
+                        <td className="break-words p-4 font-semibold text-[#12344D]">
+                          {row.case_reference}
+                        </td>
+                        <td className="break-words p-4 text-[#12344D]/80">{row.patient_name}</td>
+                        <td className="p-4 text-[#12344D]/80">{row.patient_age}</td>
+                        <td className="break-words p-4 text-[#12344D]/80">
+                          {(row.teeth || []).map((tooth) => tooth.tooth_number).join(', ') || '—'}
+                        </td>
+                        <td className="break-words p-4 text-[#12344D]/80">
+                          {row.case_date || '—'}
+                        </td>
+                        <td className="p-4">
+                          {isResumable ? (
+                            <span className="text-xs text-[#072ac8] font-semibold">
+                              {isResuming ? 'Loading…' : 'Resume →'}
+                            </span>
+                          ) : (
+                            <span
+                              className={`rounded-full border px-2 py-1 text-xs ${
+                                STATUS_CLASS[row.status] || STATUS_CLASS.pending
+                              }`}
+                            >
+                              {row.status}
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

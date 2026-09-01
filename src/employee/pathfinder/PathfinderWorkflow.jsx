@@ -5,6 +5,7 @@ import {
   deleteInstance, rotateAnalog, setInstanceVendor, listVendors,
   extractErrorMessage,
 } from '../../Script/api';
+import { useCaseStore } from '../../store/caseStore';
 import {
   Box,
   Typography,
@@ -22,11 +23,22 @@ import { ThemeProvider } from '@mui/material/styles';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
 import JobDashboard from './JobDashboard';
 import ResultsDisplay from './ResultsDisplay';
+import TeethAssignmentPanel from './TeethAssignmentPanel';
 import Viewer3D from './Viewer3D';
 import theme from './theme';
 
 const READY_STATUSES = new Set(['completed', 'awaiting_review']);
 const FAILED_STATUSES = new Set(['failed', 'error']);
+
+// The job-level `status` and the engine's own `engine_status` aren't always in
+// sync — a real /viewer response was seen with status: "aligning" while
+// engine_status was already "awaiting_review", which left the poll below
+// spinning forever even though the engine had finished. engine_status is
+// already treated as authoritative for busy/idle elsewhere (the search-around-
+// point poll checks `engine_status !== 'searching'`), so check both fields
+// here too rather than trusting `status` alone.
+const isJobReady = (state) => READY_STATUSES.has(state?.status) || READY_STATUSES.has(state?.engine_status);
+const isJobFailed = (state) => FAILED_STATUSES.has(state?.status) || FAILED_STATUSES.has(state?.engine_status);
 
 // The scan-body alignment review, for one case.
 //
@@ -48,6 +60,9 @@ function PathfinderApp({ caseId, scanFile, onComplete }) {
   const [searchFailureReason, setSearchFailureReason] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const scanUploadRetriedRef = useRef(false);
+  const toothInstanceMap = useCaseStore((s) => s.toothInstanceMap);
+  const patientName = useCaseStore((s) => s.patientData?.fullName ?? '');
+  const caseRef = useCaseStore((s) => s.caseRef ?? '');
 
   const [visibleInstances, setVisibleInstances] = useState({ scene: true });
   const [hoveredInstance, setHoveredInstance] = useState(null);
@@ -96,7 +111,7 @@ function PathfinderApp({ caseId, scanFile, onComplete }) {
       try {
         const state = await loadState();
         if (cancelled) return;
-        if (state?.job_id && !READY_STATUSES.has(state?.status) && !FAILED_STATUSES.has(state?.status)) {
+        if (state?.job_id && !isJobReady(state) && !isJobFailed(state)) {
           timer = setTimeout(tick, 4000);
         }
       } catch (e) {
@@ -136,7 +151,7 @@ function PathfinderApp({ caseId, scanFile, onComplete }) {
   };
 
   const handleCalculateAngles = useCallback(async () => {
-    if (!caseId || !job || !READY_STATUSES.has(job.status)) return;
+    if (!caseId || !job || !isJobReady(job)) return;
     if (job.calculateAngles || isCalculatingAngles) return;
     setError(null);
     try {
@@ -150,11 +165,13 @@ function PathfinderApp({ caseId, scanFile, onComplete }) {
     }
   }, [caseId, job, isCalculatingAngles]);
 
-  // Final step. As well as placing correctors, this records the results
-  // against the case's teeth server-side, which is what makes them appear in
-  // My Cases — the workflow is no longer a detached tool.
+  // Places correctors and records the results against the case's teeth
+  // server-side. `onComplete` is no longer fired from here directly — Phase C
+  // (TeethAssignmentPanel, rendered below once this succeeds) owns handing
+  // detected instances off to teeth, and calls `onComplete` itself once that
+  // mapping is saved.
   const handlePlaceAngleCorrectors = useCallback(async () => {
-    if (!caseId || !job || !READY_STATUSES.has(job.status)) return;
+    if (!caseId || !job || !isJobReady(job)) return;
     if (!job.calculateAngles?.instance_results) return;
     if (job.placeCorrectors || isPlacingCorrectors) return;
     setError(null);
@@ -162,13 +179,12 @@ function PathfinderApp({ caseId, scanFile, onComplete }) {
       setIsPlacingCorrectors(true);
       const result = await placeAngleCorrectors(caseId);
       setJob(prev => (prev ? { ...prev, placeCorrectors: result } : prev));
-      if (onComplete) onComplete(result);
     } catch (e) {
       setError(extractErrorMessage(e, 'Failed to place angle correctors'));
     } finally {
       setIsPlacingCorrectors(false);
     }
-  }, [caseId, job, isPlacingCorrectors, onComplete]);
+  }, [caseId, job, isPlacingCorrectors]);
 
   const handleSeedSelected = useCallback((point) => {
     setSeedPoint(point);
@@ -351,11 +367,11 @@ function PathfinderApp({ caseId, scanFile, onComplete }) {
 
           {/* Detection in progress. Alignment takes minutes; the state above
               polls until the engine reports instances. */}
-          {(isLoading || (job?.job_id && !READY_STATUSES.has(job?.status) && !FAILED_STATUSES.has(job?.status))) && (
+          {(isLoading || (job?.job_id && !isJobReady(job) && !isJobFailed(job))) && (
             <JobDashboard events={[{ type: 'status', stage: 'processing', message: 'Detecting implants in the scan' }]} />
           )}
 
-          {FAILED_STATUSES.has(job?.status) && (
+          {isJobFailed(job) && (
             <Paper elevation={0} sx={{ p: 3, bgcolor: 'error.dark', border: '1px solid', borderColor: 'error.main', borderRadius: 3 }}>
               <Typography color="error.light">
                 Alignment failed: {job.error || 'the compute service could not process this scan.'}
@@ -372,7 +388,7 @@ function PathfinderApp({ caseId, scanFile, onComplete }) {
           )}
 
           {/* Results Section */}
-          {READY_STATUSES.has(job?.status) && job.summary && (
+          {isJobReady(job) && job.summary && (
             <Fade in timeout={800}>
               <Box>
                 {/* Main Viewer and Controls */}
@@ -674,9 +690,27 @@ function PathfinderApp({ caseId, scanFile, onComplete }) {
                       </FormGroup>
                     </Paper>
 
+                    {/* Phase C: assign detected instances to teeth. Sits
+                        beside the viewer, right under Visibility Controls, so
+                        it appears where the instance rows are — only shown
+                        once corrector placement (Phase B) has succeeded. */}
+                    {job.placeCorrectors?.instance_correctors?.length > 0 && (
+                      <TeethAssignmentPanel
+                        caseId={caseId}
+                        instances={job.summary.instances}
+                        onComplete={onComplete}
+                        onPreviewInstance={setHoveredInstance}
+                      />
+                    )}
+
                     {/* Results Display */}
                     <ResultsDisplay
                       job={job}
+                      caseId={caseId}
+                      patientName={patientName}
+                      caseRef={caseRef}
+                      toothInstanceMap={toothInstanceMap}
+                      onDownloadComplete={onComplete}
                       onInstanceHover={setHoveredInstance}
                       onCalculateAngles={handleCalculateAngles}
                       isCalculatingAngles={isCalculatingAngles}

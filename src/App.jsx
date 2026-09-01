@@ -13,7 +13,10 @@ import EmployeeMyCases from './employee/pages/EmployeeMyCases';
 import EmployeeLibrary from './employee/pages/EmployeeLibrary';
 import EmployeeSubscription from './employee/pages/EmployeeSubscription';
 import EmployeeSettings from './employee/pages/EmployeeSettings';
+import EmployeeProfile from './employee/pages/EmployeeProfile';
+import ResetPassword from './employee/pages/ResetPassword';
 import { DEMO_MODE } from './config/demoMode';
+import { useAuthStore } from './store/authStore';
 
 const Login = lazy(() => import('./pages/Login'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
@@ -69,11 +72,21 @@ const AdminAppRouter = () => {
 
 const EmployeeAppRouter = () => {
   const { employeeAuth } = useEmployee();
+  const hasHydrated = useAuthStore.persist?.hasHydrated?.() ?? true;
   const canAccessApp = DEMO_MODE || employeeAuth.isAuthenticated;
+
+  if (!hasHydrated) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-[#fcfdf6]">
+        <div className="h-10 w-10 rounded-full border-2 border-[#072ac8] border-t-transparent animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <Suspense fallback={<LoadingFallback />}>
-      <Routes>
+<Routes>
+        <Route path="/reset-password" element={<ResetPassword />} />
         {!canAccessApp ? (
           <>
             <Route path="/login" element={<EmployeeAuth />} />
@@ -88,6 +101,7 @@ const EmployeeAppRouter = () => {
               <Route path="my-cases" element={<EmployeeMyCases />} />
               <Route path="library" element={<EmployeeLibrary />} />
               <Route path="subscription" element={<EmployeeSubscription />} />
+              <Route path="profile" element={<EmployeeProfile />} />
               <Route path="settings" element={<EmployeeSettings />} />
             </Route>
             <Route path="/login" element={<Navigate to="/dashboard" replace />} />
@@ -123,7 +137,7 @@ function App() {
   return (
     <Router>
       <RootRouter />
-      <ToastContainer position="bottom-right" autoClose={4000} />
+      <ToastContainer position="top-right" autoClose={4000} />
     </Router>
   );
 }

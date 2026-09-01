@@ -4,6 +4,7 @@ import { FileUp, Lock, Sparkles, UploadCloud } from 'lucide-react';
 import StepProgress from '../components/StepProgress';
 import ScanPreview3D from '../components/ScanPreview3D';
 import ResultsViewer3D from '../components/ResultsViewer3D';
+import VendorSelect from './VendorSelect';
 // PATHFINDER INTEGRATION: after Step 1 (New Case → Next), the scan-body
 // alignment workflow ported from the standalone `pathfinder` app takes over.
 import PathfinderWorkflow from '../pathfinder/PathfinderWorkflow';
@@ -67,11 +68,36 @@ const EmployeeNewCase = () => {
     patientData,
     caseId,
     caseRef,
+    selectedVendorIds,
+    isResuming,
     setStep,
     setPatientData,
     setCaseCreated,
+    setSelectedVendorIds,
     resetCase,
   } = useCaseStore();
+
+  // ── Mount guard ────────────────────────────────────────────────────────────
+  // The store is persisted to localStorage, so a direct visit or page refresh
+  // on /new-case restores whatever step/caseId was left behind.  We only allow
+  // that old state through when the user explicitly clicked "Resume" (which
+  // sets isResuming=true in the store before navigating here).  Otherwise
+  // force the store back to a clean step-1 slate *before* rendering the wizard.
+  const [hydrated, setHydrated] = useState(false);
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!isResuming && (currentStep !== 1 || caseId)) {
+      resetCase();
+      setPatient({ fullName: '', age: '', caseDate: new Date().toISOString().split('T')[0], notes: '' });
+    }
+    setHydrated(true);
+  }, []);
+
+  // Clear the transient isResuming flag when leaving this page so the next
+  // visit always starts fresh.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => () => { useCaseStore.setState({ isResuming: false }); }, []);
 
   // ── Local (non-persisted) state ───────────────────────────────────────────
   const [patient, setPatient] = useState(patientData);
@@ -96,37 +122,12 @@ const EmployeeNewCase = () => {
   const [meshVisibility, setMeshVisibility] = useState({ patientScan: true, scanBody: true, analog: true });
   const [activeResultTooth, setActiveResultTooth] = useState(null);
 
-  // The step-3 rehydration effect that used to sit here has been removed.
-  //
-  // It fetched the case and `analysis/{id}/results` on every entry to step 3,
-  // but everything it populated (`caseData`, `analysisResult` and the values
-  // derived from them) is read by nothing: step 3 returns early into
-  // PathfinderWorkflow, which loads its own state from the case's alignment job.
-  //
-  // Because analysis results only exist AFTER the review is completed, that
-  // request 404'd every single time a case reached step 3 — a red 404 in the
-  // console and network tab on the normal, healthy path, for data nobody
-  // rendered. The handler swallowed the 404 deliberately, so it was noise rather
-  // than a fault, but noise that looked exactly like a fault while people were
-  // testing.
-
-  // Restore persisted patient data on first mount only
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { setPatient(patientData); }, []);
-
-  // Sync local patient state → store whenever it changes (avoids setState-in-render)
-  useEffect(() => {
-    setPatientData(patient);
-  }, [patient, setPatientData]);
-
   // ── Derived state ─────────────────────────────────────────────────────────
   const step1Valid = useMemo(() => {
     const errors = validatePatient(patient);
     return Object.keys(errors).length === 0;
   }, [patient]);
 
-  // This button only pushes the selected scan and advances the server-side
-  // wizard step; tooth/library assignment is intentionally not posted here.
   const canGoToStep3 = Boolean(upload);
   const step2NextTitle = !caseId
     ? 'Case will be created before upload'
@@ -140,13 +141,10 @@ const EmployeeNewCase = () => {
 
   const avgFitnessPct = analysisResult?.results?.length
     ? Math.round(
-        (analysisResult.results.reduce((sum, r) => sum + (r.fitness_score || 0), 0) / analysisResult.results.length) * 100
-      )
+      (analysisResult.results.reduce((sum, r) => sum + (r.fitness_score || 0), 0) / analysisResult.results.length) * 100
+    )
     : null;
 
-  // Match each analysis result row to the tooth that was assigned to that
-  // vendor's library (results carry `tooth_number`, assigned client-side by
-  // the backend when it matched detected instances to teeth).
   const resultByTooth = useMemo(() => {
     const map = {};
     (analysisResult?.results || []).forEach((r) => { map[r.tooth_number] = r; });
@@ -155,11 +153,22 @@ const EmployeeNewCase = () => {
 
   // ── Handlers ──────────────────────────────────────────────────────────────
 
-  // Store sync is handled by the useEffect above — no Zustand calls inside setState
   const handlePatientChange = useCallback((field, value) => {
     setPatient((p) => ({ ...p, [field]: value }));
     setFieldErrors((e) => ({ ...e, [field]: undefined }));
   }, []);
+
+  // Restore persisted patient data on first mount only
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { setPatient(patientData); }, []);
+
+  // Sync local patient state → store whenever it changes (avoids setState-in-render)
+  useEffect(() => {
+    setPatientData(patient);
+  }, [patient, setPatientData]);
+
+  // All hooks declared — safe to early-return for hydration gate
+  if (!hydrated) return null;
 
   const handleStep1Next = async () => {
     const errors = validatePatient(patient);
@@ -170,7 +179,7 @@ const EmployeeNewCase = () => {
 
     if (caseId) {
       setStep(2);
-      api.employee.cases.updateStep(caseId, 2).catch(() => {});
+      api.employee.cases.updateStep(caseId, 2).catch(() => { });
       return;
     }
 
@@ -184,7 +193,7 @@ const EmployeeNewCase = () => {
       });
       const data = res.data?.data || res.data;
       setCaseCreated(data.id, data.case_reference);
-      await api.employee.cases.updateStep(data.id, 2).catch(() => {});
+      await api.employee.cases.updateStep(data.id, 2).catch(() => { });
       setStep(2);
     } catch (err) {
       notifyError(extractErrorMessage(err, 'Failed to create case. Please try again.'));
@@ -212,7 +221,7 @@ const EmployeeNewCase = () => {
   const goToStep = (step) => {
     setStep(step);
     if (caseId) {
-      api.employee.cases.updateStep(caseId, step).catch(() => {});
+      api.employee.cases.updateStep(caseId, step).catch(() => { });
     }
   };
 
@@ -323,12 +332,12 @@ const EmployeeNewCase = () => {
         const data = res.data?.data || res.data;
         setCaseCreated(data.id, data.case_reference);
         if (upload) {
-          await api.employee.cases.uploadScan(data.id, upload).catch(() => {});
+          await api.employee.cases.uploadScan(data.id, upload).catch(() => { });
         }
       }
 
       const finalCaseId = caseId || activeCaseId;
-      await api.employee.cases.updateStep(finalCaseId, 5).catch(() => {});
+      await api.employee.cases.updateStep(finalCaseId, 5).catch(() => { });
       setSavedRef(caseRef || 'N/A');
       notifySuccess('Case saved successfully!');
     } catch (err) {
@@ -359,17 +368,17 @@ const EmployeeNewCase = () => {
   // The scan was uploaded in step 2, which submitted an alignment job for this
   // case. The workflow reads that job rather than creating its own, so results
   // are recorded against the case and a refresh resumes instead of restarting.
-  if (currentStep >= 3) {
+  if (currentStep >= 4) {
     return (
       <div>
-        <StepProgress activeStep={3} />
+        <StepProgress activeStep={4} />
         <div className="mt-4 flex items-center justify-between gap-3">
           <button
             type="button"
-            onClick={() => goToStep(2)}
+            onClick={() => goToStep(3)}
             className="h-10 px-5 rounded-full border border-[#9cd5ff] text-[#12344D] hover:bg-[#c1e5ff]/40"
           >
-            ← Back to Scan &amp; Teeth
+            ← Back to Vendor Selection
           </button>
           <div className="text-sm text-[#12344D]/60">
             {caseRef ? <>Case <span className="text-[#12344D] font-semibold">{caseRef}</span></> : null}
@@ -377,7 +386,7 @@ const EmployeeNewCase = () => {
           </div>
         </div>
         <div className="mt-4">
-          <PathfinderWorkflow caseId={caseId} scanFile={upload} onComplete={() => navigate('/my-cases')} />
+          <PathfinderWorkflow caseId={caseId} scanFile={upload} onComplete={() => navigate('/dashboard')} />
         </div>
       </div>
     );
@@ -393,53 +402,52 @@ const EmployeeNewCase = () => {
           <h2 className="employee-heading text-lg text-[#12344D]">Patient Details</h2>
 
           <div>
+            <label className="block text-sm font-medium text-[#12344D] mb-1">Patient Full Name <span className="text-rose-500">*</span></label>
             <input
               className={`glass-input h-11 px-3 w-full ${fieldErrors.fullName ? 'border-rose-400/60' : ''}`}
-              placeholder="Patient Full Name *"
+              placeholder="Enter patient full name"
               value={patient.fullName}
               onChange={(e) => handlePatientChange('fullName', e.target.value)}
             />
             <FieldError msg={fieldErrors.fullName} />
           </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
+              <label className="block text-sm font-medium text-[#12344D] mb-1">Age <span className="text-rose-500">*</span></label>
               <input
                 className={`glass-input h-11 px-3 w-full ${fieldErrors.age ? 'border-rose-400/60' : ''}`}
                 type="number"
                 min="1"
                 max="120"
-                placeholder="Age *"
+                placeholder="Enter patient age"
                 value={patient.age}
                 onChange={(e) => handlePatientChange('age', e.target.value)}
               />
               <FieldError msg={fieldErrors.age} />
             </div>
+
             <div>
+              <label className="block text-sm font-medium text-[#12344D] mb-1">Case Date <span className="text-rose-500">*</span></label>
               <input
-                className="glass-input h-11 px-3 w-full bg-[#f6fbfe] text-[#12344D]/60 cursor-not-allowed"
-                value={caseRef || 'Auto-generated on save'}
-                readOnly
+                className={`glass-input h-11 px-3 w-full ${fieldErrors.caseDate ? 'border-rose-400/60' : ''}`}
+                type="date"
+                value={patient.caseDate}
+                onChange={(e) => handlePatientChange('caseDate', e.target.value)}
               />
+              <FieldError msg={fieldErrors.caseDate} />
             </div>
           </div>
 
           <div>
-            <input
-              className={`glass-input h-11 px-3 w-full ${fieldErrors.caseDate ? 'border-rose-400/60' : ''}`}
-              type="date"
-              value={patient.caseDate}
-              onChange={(e) => handlePatientChange('caseDate', e.target.value)}
+            <label className="block text-sm font-medium text-[#12344D] mb-1">Remarks</label>
+            <textarea
+              className="glass-input px-3 py-2 w-full min-h-28"
+              value={patient.notes}
+              placeholder="Enter any remarks (optional)"
+              onChange={(e) => handlePatientChange('notes', e.target.value)}
             />
-            <FieldError msg={fieldErrors.caseDate} />
           </div>
-
-          <textarea
-            className="glass-input px-3 py-2 w-full min-h-28"
-            value={patient.notes}
-            placeholder="Remarks (optional)"
-            onChange={(e) => handlePatientChange('notes', e.target.value)}
-          />
 
           <div className="flex justify-end">
             <button
@@ -526,16 +534,26 @@ const EmployeeNewCase = () => {
         </section>
       )}
 
+      {/* ── STEP 3 — Vendor Selection ──────────────────────────────────────── */}
+      {currentStep === 3 && (
+        <VendorSelect
+          onBack={() => goToStep(2)}
+          onComplete={() => {
+            goToStep(4);
+          }}
+        />
+      )}
+
       {/* ── Navigation bar ──────────────────────────────────────────────── */}
       <div className="sticky bottom-0 z-10 -mx-3 mt-6 flex items-center justify-between gap-3 border-t border-[#9cd5ff]/60 bg-[#FCFDF6]/95 px-3 py-3 pr-20 backdrop-blur sm:-mx-4 sm:px-4 sm:pr-24 lg:-mx-6 lg:px-6">
-        <button
+        {/* <button
           type="button"
           onClick={() => goToStep(Math.max(currentStep - 1, 1))}
           disabled={currentStep === 1}
           className="h-10 shrink-0 px-5 rounded-full border border-[#9cd5ff] text-[#12344D] hover:bg-[#c1e5ff]/40 disabled:opacity-40"
         >
           Back
-        </button>
+        </button> */}
 
         {currentStep === 1 ? null /* Next handled inside step 1 */ : currentStep === 2 ? (
           <div className="min-w-0 text-right">
@@ -550,7 +568,7 @@ const EmployeeNewCase = () => {
               {savingStep2 ? 'Saving...' : 'Next Step →'}
             </button>
           </div>
-        ) : null}
+        ) : currentStep === 3 ? null /* VendorSelect handles its own buttons */ : null}
       </div>
     </div>
   );

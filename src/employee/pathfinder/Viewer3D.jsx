@@ -48,6 +48,7 @@ function buildAxisRotation(start, end, deltaDeg) {
 }
 
 function Mesh({ url, color, isVisible, isHighlighted, opacity: customOpacity, onClick, format }) {
+  if (!url) return null;
   // Which parser to use. `format` wins when the server declares it, because the
   // URL cannot always be trusted: the patient scan is served from
   // `/user/cases/{id}/scan`, a route with NO file extension, so extension
@@ -109,6 +110,32 @@ export default function Viewer3D({ job, visibleInstances, hoveredInstance, seedP
   // `key`) so <Bounds fit> reframes correctly for the new camera type.
   const [cameraMode, setCameraMode] = useState('perspective');
   const isOrtho = cameraMode === 'orthographic';
+
+  // The base denture/scan mesh is only useful as a backdrop for detected
+  // implant instances. When the engine found none, showing the bare scan is
+  // misleading (it reads as "the alignment finished with nothing wrong"
+  // rather than "nothing was detected") — show an explicit empty state instead.
+  if ((job?.summary?.instances?.length ?? 0) === 0) {
+    return (
+      <Paper
+        elevation={0}
+        sx={{
+          height: '100%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          bgcolor: 'background.default',
+          border: '1px solid',
+          borderColor: 'divider',
+          borderRadius: 3,
+        }}
+      >
+        <Typography variant="body1" color="text.secondary">
+          No implants detected in this scan.
+        </Typography>
+      </Paper>
+    );
+  }
 
   // Render the user's original scan as the base mesh. Falling back to the
   // composite would also render the scene, but the composite has painted-blue
