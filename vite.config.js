@@ -8,6 +8,19 @@ export default defineConfig({
     react(),
     tailwindcss(),
   ],
+  build: {
+    // F-07: strip console.* and debugger from production bundles so no internal
+    // error detail (URLs, response bodies) leaks to end-user DevTools. Terser's
+    // drop_console handles all positions (statements, arrow bodies, etc.)
+    // without corrupting the output.
+    minify: 'terser',
+    terserOptions: {
+      compress: {
+        drop_console: true,
+        drop_debugger: true,
+      },
+    },
+  },
   server: {
     port: 5174,
     // Fail loudly if 5174 is taken instead of silently moving to the next free

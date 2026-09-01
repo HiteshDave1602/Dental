@@ -1,6 +1,7 @@
 import { createContext, useContext, useMemo } from 'react';
 import { useAuthStore } from '../store/authStore';
 import { DEMO_EMPLOYEE, DEMO_MODE } from '../config/demoMode';
+import api from '../Script/api';
 
 /**
  * EmployeeContext is now a thin wrapper over the Zustand authStore.
@@ -23,6 +24,17 @@ export const EmployeeProvider = ({ children }) => {
     }
   };
 
+  const logoutEmployee = async () => {
+    if (!DEMO_MODE) {
+      try {
+        await api.employee.auth.logout();
+      } catch {
+        // Best-effort: still clear local session if the network call fails.
+      }
+    }
+    logout();
+  };
+
   const value = useMemo(
     () => ({
       employeeAuth: {
@@ -31,7 +43,7 @@ export const EmployeeProvider = ({ children }) => {
       },
       employeeUser: user ?? (DEMO_MODE ? DEMO_EMPLOYEE : { name: '', email: '', plan: 'free' }),
       setEmployeeSession,
-      logoutEmployee: logout,
+      logoutEmployee,
       updateEmployeeUser: updateUser,
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
