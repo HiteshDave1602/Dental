@@ -11,8 +11,16 @@ const lowerTeeth = ['48', '47', '46', '45', '44', '43', '42', '41', '31', '32', 
 // hovering an instance option there also asks the 3D viewer to highlight that
 // instance's mesh (scan body included), so the user can see exactly which
 // implant they're about to place before committing to a tooth.
-const ToothChart = ({ instances = [], toothInstanceMap = {}, onAssignInstance, onPreviewInstance }) => {
+// `onActiveToothChange` lets a parent follow the tooth the user is working on
+// (SuperimposeStep opens the per-tooth implant-library card beside the chart).
+// Optional — TeethAssignmentPanel doesn't pass it.
+const ToothChart = ({ instances = [], toothInstanceMap = {}, onAssignInstance, onPreviewInstance, onActiveToothChange }) => {
   const [activeTooth, setActiveTooth] = useState(null);
+
+  const selectTooth = (tooth) => {
+    setActiveTooth(tooth);
+    onActiveToothChange?.(tooth);
+  };
 
   const toothToInstance = useMemo(() => {
     const map = {};
@@ -31,7 +39,15 @@ const ToothChart = ({ instances = [], toothInstanceMap = {}, onAssignInstance, o
 
   const handleAssign = (instanceIndex) => {
     onAssignInstance(activeTooth, instanceIndex);
-    setActiveTooth(null);
+    // Keep the tooth active when a parent is listening: assigning an instance is
+    // what unlocks the library picker for that tooth, so closing the row here
+    // would immediately hide the next thing the user needs.
+    if (onActiveToothChange) {
+      onActiveToothChange(instanceIndex === null ? null : activeTooth);
+      if (instanceIndex === null) setActiveTooth(null);
+    } else {
+      setActiveTooth(null);
+    }
     onPreviewInstance?.(null);
   };
 
@@ -45,7 +61,7 @@ const ToothChart = ({ instances = [], toothInstanceMap = {}, onAssignInstance, o
           <button
             key={id}
             type="button"
-            onClick={() => setActiveTooth((prev) => (prev === id ? null : id))}
+            onClick={() => selectTooth(activeTooth === id ? null : id)}
             className={cn(
               'relative h-8 rounded-xl border text-[10px] font-bold flex items-center justify-center shadow-sm transition-all duration-150 hover:scale-[1.08] active:scale-95',
               isAssigned

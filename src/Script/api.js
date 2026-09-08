@@ -275,13 +275,20 @@ export const searchAroundPoint = async (caseId, x, y, z, _searchRadius = null, v
         x, y, z, vendor_id: vendorId || null,
     }));
 
-export const calculateAngles = async (caseId) =>
-    unwrap(await employeeService.post(`${alignmentBase(caseId)}/angles`));
+export const calculateAngles = async (caseId, instanceIndexes = null) =>
+    unwrap(await employeeService.post(
+        `${alignmentBase(caseId)}/angles`,
+        instanceIndexes ? { instance_indexes: instanceIndexes } : {},
+    ));
 
 // Final step: places correctors AND records the results against the case's
-// teeth, so they appear in My Cases.
-export const placeAngleCorrectors = async (caseId) =>
-    unwrap(await employeeService.post(`${alignmentBase(caseId)}/correctors`));
+// teeth, so they appear in My Cases.  Accepts optional instanceIndexes to
+// scope correction to a subset of instances (matches calculateAngles).
+export const placeAngleCorrectors = async (caseId, instanceIndexes = null) =>
+    unwrap(await employeeService.post(
+        `${alignmentBase(caseId)}/correctors`,
+        instanceIndexes ? { instance_indexes: instanceIndexes } : {},
+    ));
 
 const api = {
     auth: {
@@ -307,6 +314,9 @@ const api = {
         // Admin-only aggregations (admin-token scoped)
         dashboardStats: async () => apiService.get('/admin/stats'),
         listUsers: async (params) => apiService.get('/admin/users', params),
+        getUser: async (userId) => apiService.get(`/admin/users/${userId}`),
+        createUser: async (payload) => apiService.post('/admin/users', payload),
+        updateUser: async (userId, payload) => apiService.put(`/admin/users/${userId}`, payload),
     },
 
     libraries: {
@@ -331,6 +341,9 @@ const api = {
             });
         },
         listBundles: async (libraryId) => apiService.get(`/admin/libraries/${libraryId}/bundles`),
+        // Signed URL to download a bundle archive. Requires a version id.
+        downloadBundle: async (bundleVersionId) =>
+            apiService.get('/admin/bundles/download', { version_id: bundleVersionId }, { responseType: 'blob' }),
         // Vendors registered on the alignment engine. A library's
         // alignment_vendor_id must be one of these ids or its cases cannot be
         // aligned, so the library form selects from this list.

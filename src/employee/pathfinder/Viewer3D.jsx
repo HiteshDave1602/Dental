@@ -166,7 +166,7 @@ export default function Viewer3D({ job, visibleInstances, hoveredInstance, seedP
           borderRadius: 3,
         }}
       >
-        <Stack spacing={2} alignItems="center">
+        <Stack spacing={2} sx={{ alignItems: 'center' }}>
           <CircularProgress size={60} thickness={4} />
           <Typography variant="body1" color="text.secondary">
             Preparing 3D viewer...

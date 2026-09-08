@@ -95,8 +95,8 @@ const EmployeeSubscription = () => {
         </div>
         <div className="p-4 text-sm text-[#12344D]/60">
           View your full credit transaction history on the{' '}
-          <a href="/profile" className="font-semibold text-[#072ac8] underline decoration-[#9cd5ff] underline-offset-4 hover:text-[#12344D]">
-            Profile page
+          <a href="/credits" className="font-semibold text-[#072ac8] underline decoration-[#9cd5ff] underline-offset-4 hover:text-[#12344D]">
+            Credit History page
           </a>.
         </div>
       </section>

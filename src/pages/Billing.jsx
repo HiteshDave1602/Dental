@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Search, TrendingUp, Waypoints } from 'lucide-react';
+import { Search, TrendingUp, Waypoints, Eye } from 'lucide-react';
 import { cn } from '../utils/utils';
 import Input from '../components/ui/Input';
 import api, { extractErrorMessage } from '../Script/api';
+import SubscriptionDetailModal from '../components/modals/SubscriptionDetailModal';
 
 const STATUS_CLASS = {
     active: 'bg-emerald-50 text-emerald-700 border-emerald-200',
@@ -33,6 +34,9 @@ const Billing = () => {
     const [plans, setPlans] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+    const [selectedSub, setSelectedSub] = useState(null);
+    const [showDetailModal, setShowDetailModal] = useState(false);
+    const [reloadKey, setReloadKey] = useState(0);
 
     useEffect(() => {
         let cancelled = false;
@@ -54,7 +58,7 @@ const Billing = () => {
             }
         })();
         return () => { cancelled = true; };
-    }, []);
+    }, [reloadKey]);
 
     const planById = useMemo(
         () => Object.fromEntries(plans.map((p) => [String(p.id), p])),
@@ -158,13 +162,14 @@ const Billing = () => {
                                 <th className="p-4">Started</th>
                                 <th className="p-4">Ends</th>
                                 <th className="p-4">Status</th>
+                                <th className="p-4"></th>
                             </tr>
                         </thead>
                         <tbody>
                             {filtered.map((s) => {
                                 const plan = planById[String(s.plan_id)];
                                 return (
-                                    <tr key={s.id} className="border-b border-slate-50 last:border-0 hover:bg-slate-50/50">
+                                    <tr key={s.id} className="border-b border-slate-50 last:border-0 hover:bg-slate-50/50 cursor-pointer group" onClick={() => { setSelectedSub(s); setShowDetailModal(true); }}>
                                         <td className="p-4 text-sm font-semibold text-slate-700">{plan?.name ?? '—'}</td>
                                         <td className="p-4 text-xs text-slate-500 font-mono">{String(s.user_id).slice(0, 8)}…</td>
                                         <td className="p-4 text-sm text-slate-700">
@@ -180,6 +185,11 @@ const Billing = () => {
                                                 {s.status}
                                             </span>
                                         </td>
+                                        <td className="p-4 text-right">
+                                            <span className="inline-flex items-center gap-1 text-xs font-semibold text-teal-600 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <Eye size={14} /> View
+                                            </span>
+                                        </td>
                                     </tr>
                                 );
                             })}
@@ -187,6 +197,13 @@ const Billing = () => {
                     </table>
                 )}
             </div>
+
+            <SubscriptionDetailModal
+                isOpen={showDetailModal}
+                onClose={() => { setShowDetailModal(false); setSelectedSub(null); }}
+                subscriptionId={selectedSub?.id}
+                onUpdated={() => setReloadKey((k) => k + 1)}
+            />
         </div>
     );
 };

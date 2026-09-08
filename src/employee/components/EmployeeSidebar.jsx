@@ -2,6 +2,7 @@ import {
   BadgePlus,
   ChevronLeft,
   ChevronRight,
+  Coins,
   FolderKanban,
   LayoutDashboard,
   // Library,
@@ -29,6 +30,7 @@ const menuGroups = [
     label: 'Account',
     items: [
       { label: 'Subscription', to: '/subscription', icon: WalletCards },
+      // { label: 'Credit History', to: '/credits', icon: Coins },
       // { label: 'Settings', to: '/settings', icon: Settings },
     ],
   },
@@ -40,18 +42,21 @@ const railItems = [
   { to: '/my-cases', icon: FolderKanban, label: 'My Cases' },
   // { to: '/library', icon: Library, label: 'Library' },
   { to: '/subscription', icon: WalletCards, label: 'Subscription' },
+  { to: '/credits', icon: Coins, label: 'Credit History' },
 ];
 
 const EmployeeSidebar = ({ collapsed, onToggle }) => {
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const { employeeUser, logoutEmployee } = useEmployee();
-  const resetCase = useCaseStore((s) => s.resetCase);
   const displayName = employeeUser?.name || employeeUser?.email || 'User';
   const displayEmail = employeeUser?.email || 'Dental professional';
 
   const handleNewCase = () => {
-    resetCase();
+    // Always start a brand-new case from Step 1 (Patient Details). Discard the
+    // persisted draft — an in-progress case is only resumed explicitly via the
+    // Resume action in My Cases / Dashboard, never implicitly from New Case.
+    useCaseStore.getState().resetCase();
     navigate('/new-case');
   };
 

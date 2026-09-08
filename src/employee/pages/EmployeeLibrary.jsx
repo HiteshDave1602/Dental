@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import api from '../../Script/api';
+import { useCaseStore } from '../../store/caseStore';
 
 const PAGE_SIZE = 12;
 
@@ -147,7 +148,7 @@ const EmployeeLibrary = () => {
               <div className="mt-auto pt-4 flex items-center justify-between">
                 <button
                   className="text-[#072ac8] text-sm font-semibold hover:text-[#0a2472]"
-                  onClick={() => navigate('/new-case')}
+                  onClick={() => { useCaseStore.getState().resetCase(); navigate('/new-case'); }}
                 >
                   Use in New Case →
                 </button>

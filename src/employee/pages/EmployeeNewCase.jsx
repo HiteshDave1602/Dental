@@ -8,11 +8,14 @@ import VendorSelect from './VendorSelect';
 // PATHFINDER INTEGRATION: after Step 1 (New Case → Next), the scan-body
 // alignment workflow ported from the standalone `pathfinder` app takes over.
 import PathfinderWorkflow from '../pathfinder/PathfinderWorkflow';
+import SuperimposeStep from '../pathfinder/SuperimposeStep';
 import { useCaseStore } from '../../store/caseStore';
-import api, { extractErrorMessage, notifyError, notifySuccess, RESOLVED_BASE_URL } from '../../Script/api';
+import api, { extractErrorMessage, notifyError, notifySuccess, getAlignmentState, RESOLVED_BASE_URL } from '../../Script/api';
+import EmployeeCreditIndicator from '../components/EmployeeCreditIndicator';
 
 const MB = 1024 * 1024;
 const fileSizeInMb = (size) => `${(size / MB).toFixed(2)} MB`;
+const CREDIT_COST_PER_CASE = 3;
 
 // ── Step 1 validation ─────────────────────────────────────────────────────────
 
@@ -47,17 +50,22 @@ const AlertBanner = ({ msg, variant = 'amber' }) => {
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-// The wizard is three steps:
+// The wizard is five steps:
 //
 //   1. Patient details -> validates locally and moves to scan upload
 //   2. Scan upload      -> uploads the scan, which submits an alignment job
-//                          server-side (the engine detects implants itself —
-//                          no manual tooth/library assignment needed upfront)
-//   3. Alignment review -> PathfinderWorkflow, scoped to this case
-//
-// Steps 3-5 of the original design (superimpose / results / download) were
-// placeholder UI over a stubbed analysis endpoint. The review workflow covers
-// all three with real engine output, so they have been removed.
+//                          server-side (the engine detects implants itself)
+//   3. Vendor selection -> pick implant system(s)
+//   4. Alignment review -> confirm the detected implant set (delete false
+//                          positives, add missed instances), driven by
+//                          PathfinderWorkflow
+//   5. Angle Calculation -> select the teeth to compute, calculate angles for
+//                          JUST those teeth, place correctors, assign tooth
+//                          numbers, and download results (SuperimposeStep)
+
+// (The older 5-step design — superimpose / results / download over a stubbed
+// analysis endpoint — was removed; the review + angle calculation steps now
+// cover all of it with real engine output.)
 
 const EmployeeNewCase = () => {
   const navigate = useNavigate();
@@ -79,15 +87,17 @@ const EmployeeNewCase = () => {
 
   // ── Mount guard ────────────────────────────────────────────────────────────
   // The store is persisted to localStorage, so a direct visit or page refresh
-  // on /new-case restores whatever step/caseId was left behind.  We only allow
-  // that old state through when the user explicitly clicked "Resume" (which
-  // sets isResuming=true in the store before navigating here).  Otherwise
-  // force the store back to a clean step-1 slate *before* rendering the wizard.
+  // on /new-case restores whatever step/caseId was left behind. A persisted
+  // caseId means a case is in flight: restore it so the wizard picks up where
+  // the user stopped instead of wiping it and forcing a re-upload (which would
+  // re-submit the alignment job and re-charge credits). Only a fresh visit
+  // with no draft case starts from a clean step-1 slate. An explicit "Start
+  // Over" button inside the wizard covers the intentional fresh start.
   const [hydrated, setHydrated] = useState(false);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    if (!isResuming && (currentStep !== 1 || caseId)) {
+    if (!isResuming && !caseId) {
       resetCase();
       setPatient({ fullName: '', age: '', caseDate: new Date().toISOString().split('T')[0], notes: '' });
     }
@@ -107,12 +117,12 @@ const EmployeeNewCase = () => {
   const [upload, setUpload] = useState(null);          // File object — can't persist
   const [scanUploadError, setScanUploadError] = useState('');
   const [savingStep2, setSavingStep2] = useState(false);
+  const [scanAlreadyUploaded, setScanAlreadyUploaded] = useState(false);
   const [wireframeMode, setWireframeMode] = useState(false);
   const [orthographicMode, setOrthographicMode] = useState(false);
 
   const [savingFinal, setSavingFinal] = useState(false);
   const [savedRef, setSavedRef] = useState(null);
-  const [superimposed, setSuperimposed] = useState(false);
 
   // ── Analysis (Steps 3–4) — ephemeral, not persisted in caseStore ─────────
   const [caseData, setCaseData] = useState(null);               // api.employee.cases.get(caseId) — for patient_scan_url
@@ -128,10 +138,10 @@ const EmployeeNewCase = () => {
     return Object.keys(errors).length === 0;
   }, [patient]);
 
-  const canGoToStep3 = Boolean(upload);
+  const canGoToStep3 = Boolean(upload || scanAlreadyUploaded);
   const step2NextTitle = !caseId
     ? 'Case will be created before upload'
-    : !upload
+    : !canGoToStep3
       ? 'Upload a scan to continue'
       : '';
 
@@ -166,6 +176,23 @@ const EmployeeNewCase = () => {
   useEffect(() => {
     setPatientData(patient);
   }, [patient, setPatientData]);
+
+  // When the wizard lands on (or returns to) Step 2 for a case that already has
+  // an alignment job, the scan File can't be restored from the store — so the
+  // file picker would wrongly look empty and force a re-upload. Detect the
+  // server-side job so the user can continue without re-picking a file, and so
+  // a repeated upload never re-submits / re-charges an existing scan.
+  useEffect(() => {
+    let active = true;
+    if (currentStep === 2 && caseId) {
+      getAlignmentState(caseId)
+        .then((state) => { if (active) setScanAlreadyUploaded(Boolean(state?.job_id)); })
+        .catch(() => { if (active) setScanAlreadyUploaded(false); });
+    } else {
+      setScanAlreadyUploaded(false);
+    }
+    return () => { active = false; };
+  }, [currentStep, caseId]);
 
   // All hooks declared — safe to early-return for hydration gate
   if (!hydrated) return null;
@@ -226,10 +253,6 @@ const EmployeeNewCase = () => {
   };
 
   const handleNextFromStep2 = async () => {
-    if (!upload) {
-      notifyError('Upload a scan file before continuing.');
-      return;
-    }
     const errors = validatePatient(patient);
     if (!caseId && Object.keys(errors).length) {
       setFieldErrors(errors);
@@ -254,10 +277,23 @@ const EmployeeNewCase = () => {
         setCaseCreated(data.id, data.case_reference);
       }
 
+      // Only submit the scan when this case has no alignment job yet. Re-uploading
+      // the same scan would re-submit the job server-side and could hold credits
+      // a second time, so skip it when the case already has a scan on file.
+      const existing = await getAlignmentState(activeCaseId).catch(() => null);
+      const hasJob = Boolean(existing?.job_id);
+
+      if (!upload && !hasJob) {
+        notifyError('Upload a scan file before continuing.');
+        return;
+      }
+
       // The alignment job is submitted server-side when the scan lands — the
       // engine detects implant instances itself, no tooth/library assignment
       // needs to be posted beforehand.
-      await api.employee.cases.uploadScan(activeCaseId, upload);
+      if (upload && !hasJob) {
+        await api.employee.cases.uploadScan(activeCaseId, upload);
+      }
       await api.employee.cases.updateStep(activeCaseId, 3);
       setStep(3);
     } catch (err) {
@@ -285,35 +321,6 @@ const EmployeeNewCase = () => {
       if (status === 'failed') throw new Error('Alignment job failed. Please re-upload the scan and try again.');
     }
     throw new Error('Alignment is taking longer than expected. Please try again shortly.');
-  };
-
-  const handleProcessSuperimposition = async () => {
-    if (!caseId) return;
-    setAnalysisLoading(true);
-    setAnalysisError('');
-    try {
-      if (!caseData) {
-        const caseRes = await api.employee.cases.get(caseId);
-        setCaseData(caseRes.data?.data || caseRes.data);
-      }
-      let res;
-      try {
-        res = await api.employee.analysis.calculate(caseId);
-      } catch (err) {
-        if (!isJobNotReady(err)) throw err;
-        await pollAlignmentUntilReady(caseId);
-        res = await api.employee.analysis.calculate(caseId);
-      }
-      setAnalysisResult(res.data?.data || res.data);
-      setSuperimposed(true);
-      notifySuccess('Superimposition complete');
-    } catch (err) {
-      setAnalysisError(
-        err?.response ? extractErrorMessage(err, 'Superimposition failed. Please try again.') : (err.message || 'Superimposition failed. Please try again.')
-      );
-    } finally {
-      setAnalysisLoading(false);
-    }
   };
 
   const handleFinalSave = async () => {
@@ -354,7 +361,6 @@ const EmployeeNewCase = () => {
     setWireframeMode(false);
     setOrthographicMode(false);
     setSavedRef(null);
-    setSuperimposed(false);
     setCaseData(null);
     setAnalysisResult(null);
     setAnalysisError('');
@@ -362,13 +368,22 @@ const EmployeeNewCase = () => {
     setMeshVisibility({ patientScan: true, scanBody: true, analog: true });
   };
 
+  // Explicit "start fresh" — resumes never happen by accident, and discarding a
+  // draft is always confirmed.
+  const confirmStartNew = () => {
+    if (window.confirm('Discard this in-progress case and start a new one?')) {
+      handleStartNew();
+    }
+  };
+
   // ── Render ─────────────────────────────────────────────────────────────────
 
-  // ── STEP 3 — Alignment review ─────────────────────────────────────────────
+  // ── STEP 4 — Alignment review ────────────────────────────────────────────
   // The scan was uploaded in step 2, which submitted an alignment job for this
   // case. The workflow reads that job rather than creating its own, so results
   // are recorded against the case and a refresh resumes instead of restarting.
-  if (currentStep >= 4) {
+  // Once the detection set is confirmed, it advances to the Angle Calculation step.
+  if (currentStep === 4) {
     return (
       <div>
         <StepProgress activeStep={4} />
@@ -380,13 +395,69 @@ const EmployeeNewCase = () => {
           >
             ← Back to Vendor Selection
           </button>
-          <div className="text-sm text-[#12344D]/60">
-            {caseRef ? <>Case <span className="text-[#12344D] font-semibold">{caseRef}</span></> : null}
-            {patient.fullName ? <span className="ml-3">{patient.fullName}</span> : null}
+          <div className="flex items-center gap-4">
+            <button
+              type="button"
+              onClick={confirmStartNew}
+              className="text-xs font-semibold text-[#12344D]/45 hover:text-rose-600"
+            >
+              Start Over
+            </button>
+            <div className="text-sm text-[#12344D]/60">
+              {caseRef ? <>Case <span className="text-[#12344D] font-semibold">{caseRef}</span></> : null}
+              {patient.fullName ? <span className="ml-3">{patient.fullName}</span> : null}
+            </div>
           </div>
         </div>
         <div className="mt-4">
-          <PathfinderWorkflow caseId={caseId} scanFile={upload} onComplete={() => navigate('/dashboard')} />
+          <PathfinderWorkflow
+            caseId={caseId}
+            scanFile={upload}
+            onComplete={() => goToStep(5)}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  // ── STEP 5 — Angle Calculation ───────────────────────────────────────────
+  // The last stage of the new-case flow. A 3D viewer shows the scan body
+  // alongside the patient mesh; the user picks which detected instances
+  // ("teeth") to compute angles for, sees visibility controls, and clicks
+  // "Calculate Selected Teeth Angle" to compute angles for ONLY those teeth.
+  // From there: place correctors, assign tooth numbers, and download results.
+  if (currentStep === 5) {
+    return (
+      <div>
+        <StepProgress activeStep={5} />
+        <div className="mt-4 flex items-center justify-between gap-3">
+          <button
+            type="button"
+            onClick={() => goToStep(4)}
+            className="h-10 px-5 rounded-full border border-[#9cd5ff] text-[#12344D] hover:bg-[#c1e5ff]/40"
+          >
+            ← Back to Alignment Review
+          </button>
+          <div className="flex items-center gap-4">
+            <button
+              type="button"
+              onClick={confirmStartNew}
+              className="text-xs font-semibold text-[#12344D]/45 hover:text-rose-600"
+            >
+              Start Over
+            </button>
+            <div className="text-sm text-[#12344D]/60">
+              {caseRef ? <>Case <span className="text-[#12344D] font-semibold">{caseRef}</span></> : null}
+              {patient.fullName ? <span className="ml-3">{patient.fullName}</span> : null}
+            </div>
+          </div>
+        </div>
+        <div className="mt-4">
+          <SuperimposeStep
+            caseId={caseId}
+            scanFile={upload}
+            onComplete={() => { navigate('/dashboard'); resetCase(); }}
+          />
         </div>
       </div>
     );
@@ -394,6 +465,17 @@ const EmployeeNewCase = () => {
 
   return (
     <div className="pb-20">
+      {(caseId || currentStep > 1) && (
+        <div className="mb-2 flex justify-end">
+          <button
+            type="button"
+            onClick={confirmStartNew}
+            className="text-xs font-semibold text-[#12344D]/45 hover:text-rose-600"
+          >
+            Start Over
+          </button>
+        </div>
+      )}
       <StepProgress activeStep={currentStep} />
 
       {/* ── STEP 1 — Patient Details ─────────────────────────────────────── */}
@@ -475,6 +557,14 @@ const EmployeeNewCase = () => {
           {/* Scan upload */}
           <article className="glass-card p-5">
             <h2 className="employee-heading text-lg text-[#12344D]">Upload Patient Scan Data</h2>
+            <div className="mt-3">
+              <EmployeeCreditIndicator autoHold={upload ? CREDIT_COST_PER_CASE : 0} />
+            </div>
+            {!upload && scanAlreadyUploaded ? (
+              <div className="mt-4 rounded-xl border border-emerald-300 bg-emerald-50 p-3 text-sm text-emerald-700">
+                ✓ A scan is already uploaded for this case — you can continue without uploading again.
+              </div>
+            ) : null}
             {!upload ? (
               <label className="block mt-4 rounded-2xl border-2 border-dashed border-[#6ab0e3]/60 p-8 text-center bg-[#f6fbfe] cursor-pointer hover:border-[#072ac8] transition-colors">
                 <UploadCloud className="mx-auto mt-3 text-[#6ab0e3]" />
