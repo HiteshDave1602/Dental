@@ -30,7 +30,7 @@ export default function JobDashboard({ events }) {
     <Fade in timeout={450}>
       <Card elevation={0} sx={{ position: 'relative', overflow: 'hidden', borderRadius: { xs: 3, sm: 4 }, color: '#F6FBFE', background: 'linear-gradient(120deg, #071433 0%, #0A2472 52%, #0C1C4D 100%)', border: '1px solid rgba(156, 213, 255, 0.28)', boxShadow: '0 18px 42px rgba(7, 42, 114, 0.26)', '&::before': { content: '""', position: 'absolute', inset: 0, pointerEvents: 'none', background: 'radial-gradient(circle at 12% 22%, rgba(106, 176, 227, 0.24), transparent 30%), radial-gradient(circle at 85% 85%, rgba(7, 42, 200, 0.42), transparent 34%)' } }}>
         <CardContent sx={{ position: 'relative', p: { xs: 3, sm: 5 } }}>
-          <Stack direction={{ xs: 'column', md: 'row' }} spacing={{ xs: 4, md: 6 }} alignItems="center">
+          <Stack direction={{ xs: 'column', md: 'row' }} spacing={{ xs: 4, md: 6 }} sx={{ alignItems: 'center' }}>
             <Box aria-hidden="true" sx={{ position: 'relative', width: { xs: 172, sm: 204 }, height: { xs: 172, sm: 204 }, flexShrink: 0 }}>
               <Box sx={{ position: 'absolute', inset: 0, borderRadius: '50%', border: '1px solid rgba(156, 213, 255, 0.3)', animation: `${breathe} 3s ease-in-out infinite` }} />
               <Box sx={{ position: 'absolute', inset: 12, borderRadius: '50%', border: '1px dashed rgba(156, 213, 255, 0.54)', animation: `${orbit} 16s linear infinite` }}><Box sx={{ position: 'absolute', top: -4, left: '50%', width: 8, height: 8, borderRadius: '50%', bgcolor: '#9CD5FF', boxShadow: '0 0 16px #9CD5FF', transform: 'translateX(-50%)' }} /></Box>
@@ -49,7 +49,7 @@ export default function JobDashboard({ events }) {
                 {stages.map((stage, index) => {
                   const isComplete = progress > index;
                   const isActive = index === activeStage;
-                  return <Stack key={stage} direction="row" spacing={0.8} alignItems="center" sx={{ color: isComplete || isActive ? '#F6FBFE' : 'rgba(246, 251, 254, 0.45)' }}><Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: isComplete ? '#9CD5FF' : 'rgba(156, 213, 255, 0.28)', boxShadow: isActive ? '0 0 0 5px rgba(156,213,255,.12), 0 0 12px #9CD5FF' : 'none' }} /><Typography sx={{ fontSize: '0.75rem', fontWeight: isActive ? 700 : 500 }}>{stage}</Typography></Stack>;
+                  return <Stack key={stage} direction="row" spacing={0.8} sx={{ alignItems: 'center', color: isComplete || isActive ? '#F6FBFE' : 'rgba(246, 251, 254, 0.45)' }}><Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: isComplete ? '#9CD5FF' : 'rgba(156, 213, 255, 0.28)', boxShadow: isActive ? '0 0 0 5px rgba(156,213,255,.12), 0 0 12px #9CD5FF' : 'none' }} /><Typography sx={{ fontSize: '0.75rem', fontWeight: isActive ? 700 : 500 }}>{stage}</Typography></Stack>;
                 })}
               </Stack>
             </Box>

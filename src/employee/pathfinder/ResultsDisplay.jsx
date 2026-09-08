@@ -104,7 +104,7 @@ function AnalogRotationControl({ instanceIndex, savedDeg, onSave, onDraftChange 
 
   return (
     <Box sx={{ mt: 1.5 }}>
-      <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 0.5 }}>
+      <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', mb: 0.5 }}>
         <Typography variant="caption" color="text.secondary">
           Analog Z Rotation
         </Typography>
@@ -125,7 +125,7 @@ function AnalogRotationControl({ instanceIndex, savedDeg, onSave, onDraftChange 
         />
       </Box>
       {/* Number input + Save on the row below. */}
-      <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between" sx={{ mt: 0.5 }}>
+      <Stack direction="row" spacing={1} sx={{ alignItems: 'center', justifyContent: 'space-between', mt: 0.5 }}>
         <TextField
           size="small"
           type="number"
@@ -572,7 +572,7 @@ export default function ResultsDisplay({
                 const savedDeg = Number(summaryInst?.analog_z_rotation_deg ?? 0);
                 return (
                   <Paper key={r.instance_index} elevation={0} sx={{ p: { xs: 1.5, sm: 2 }, borderRadius: 2, bgcolor: 'background.default', width: '100%' }}>
-                    <Stack direction="row" alignItems="baseline" justifyContent="space-between">
+                    <Stack direction="row" sx={{ alignItems: 'baseline', justifyContent: 'space-between' }}>
                       <Typography variant="caption" color="text.secondary">
                         Instance #{r.instance_index}
                       </Typography>

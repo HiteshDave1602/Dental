@@ -4,10 +4,15 @@ import {
     ChevronRight,
     ChevronLeft,
     Users,
+    Eye,
+    Plus,
 } from 'lucide-react';
 import { cn } from '../utils/utils';
 import Input from '../components/ui/Input';
+import Button from '../components/ui/Button';
 import api from '../Script/api';
+import UserDetailModal from '../components/modals/UserDetailModal';
+import CreateUserModal from '../components/modals/CreateUserModal';
 
 const PAGE_SIZE = 10;
 
@@ -22,6 +27,10 @@ const UserManagement = () => {
     const [totalPages, setTotalPages] = useState(1);
 
     const debounceRef = useRef(null);
+
+    const [selectedUserId, setSelectedUserId] = useState(null);
+    const [showDetailModal, setShowDetailModal] = useState(false);
+    const [showCreateModal, setShowCreateModal] = useState(false);
 
     const loadUsers = useCallback(async (searchVal, pageNum) => {
         setLoading(true);
@@ -75,6 +84,14 @@ const UserManagement = () => {
                         {total > 0 ? `${total.toLocaleString()} registered user${total === 1 ? '' : 's'}` : 'Platform users, plans, and credit balances.'}
                     </p>
                 </div>
+
+                <Button
+                    onClick={() => setShowCreateModal(true)}
+                    className="h-12 px-6 bg-[#0d9488] hover:bg-[#0c857a] text-white rounded-xl font-bold flex items-center gap-2 shadow-lg shadow-teal-500/20 active:scale-95 transition-all"
+                >
+                    <Plus size={20} />
+                    Create New User
+                </Button>
             </div>
 
             {/* Search */}
@@ -131,7 +148,7 @@ const UserManagement = () => {
                                 </tr>
                             ) : (
                                 users.map((user) => (
-                                    <tr key={user.id} className="hover:bg-slate-50/50 transition-colors group">
+                                    <tr key={user.id} className="hover:bg-slate-50/50 transition-colors group cursor-pointer" onClick={() => { setSelectedUserId(user.id); setShowDetailModal(true); }}>
                                         <td className="px-8 py-4">
                                             <div className="flex items-center gap-3">
                                                 <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-[13px] font-bold text-slate-600 border border-white shadow-sm overflow-hidden flex-shrink-0">
@@ -195,6 +212,18 @@ const UserManagement = () => {
                     </div>
                 )}
             </div>
+
+            <UserDetailModal
+                isOpen={showDetailModal}
+                onClose={() => { setShowDetailModal(false); setSelectedUserId(null); }}
+                userId={selectedUserId}
+            />
+
+            <CreateUserModal
+                isOpen={showCreateModal}
+                onClose={() => setShowCreateModal(false)}
+                onCreated={() => loadUsers(searchTerm, page)}
+            />
         </div>
     );
 };

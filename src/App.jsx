@@ -14,6 +14,7 @@ import EmployeeLibrary from './employee/pages/EmployeeLibrary';
 import EmployeeSubscription from './employee/pages/EmployeeSubscription';
 import EmployeeSettings from './employee/pages/EmployeeSettings';
 import EmployeeProfile from './employee/pages/EmployeeProfile';
+import EmployeeCreditTransactions from './employee/pages/EmployeeCreditTransactions';
 import ResetPassword from './employee/pages/ResetPassword';
 import { DEMO_MODE } from './config/demoMode';
 import { useAuthStore } from './store/authStore';
@@ -102,6 +103,7 @@ const EmployeeAppRouter = () => {
               <Route path="library" element={<EmployeeLibrary />} />
               <Route path="subscription" element={<EmployeeSubscription />} />
               <Route path="profile" element={<EmployeeProfile />} />
+              <Route path="credits" element={<EmployeeCreditTransactions />} />
               <Route path="settings" element={<EmployeeSettings />} />
             </Route>
             <Route path="/login" element={<Navigate to="/dashboard" replace />} />

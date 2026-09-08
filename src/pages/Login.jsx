@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useFormik } from 'formik';
 import { Mail, Lock, Eye, EyeOff, Microscope, UserRound } from 'lucide-react';
 import { useGlobal } from '../context/GlobalContext';
+import api, { notifyError, extractErrorMessage } from '../Script/api';
+import { DEMO_MODE } from '../config/demoMode';
 import dentalVideo from '../assets/Untitled design.mp4';
 import { loginValidationSchema, signupValidationSchema } from '../utils/authValidation';
 
@@ -15,17 +17,57 @@ const Login = () => {
     const formik = useFormik({
         initialValues: { name: '', email: '', password: '' },
         validationSchema: isRegistering ? signupValidationSchema : loginValidationSchema,
-        onSubmit: (values) => {
-        setIsLoading(true);
+        onSubmit: async (values) => {
+            setIsLoading(true);
 
-        setAuth({ isAuthenticated: true, token: 'local-dashboard-access' });
-        setUser({
-            name: isRegistering ? values.name || 'New Administrator' : values.email || 'Demo Administrator',
-            role: 'System Administrator',
-            email: values.email,
-        });
-        setIsLoading(false);
-        navigate('/dashboard');
+            try {
+                if (DEMO_MODE) {
+                    sessionStorage.setItem('token', 'local-dashboard-access');
+                    setAuth({ isAuthenticated: true, token: 'local-dashboard-access' });
+                    setUser({
+                        name: isRegistering ? values.name || 'New Administrator' : values.email || 'Demo Administrator',
+                        role: 'System Administrator',
+                        email: values.email,
+                    });
+                    navigate('/dashboard');
+                    return;
+                }
+
+                if (isRegistering) {
+                    await api.auth.signup({
+                        username: values.name,
+                        email: values.email,
+                        password: values.password,
+                    });
+                }
+
+                const res = await api.auth.login(values.email, values.password);
+                const payload = res.data?.data || res.data;
+                const accessToken = payload?.access_token || payload?.token;
+
+                if (!accessToken) {
+                    throw new Error('The server did not return an access token.');
+                }
+
+                const admin = payload?.user || payload?.admin || null;
+                // Persist the token synchronously so the apiClient request
+                // interceptor (which reads sessionStorage on every call) has it
+                // the moment the Dashboard mounts — otherwise the first
+                // /admin/stats and /admin/libraries requests fire with no
+                // Authorization header and return 401.
+                sessionStorage.setItem('token', accessToken);
+                setAuth({ isAuthenticated: true, token: accessToken });
+                setUser({
+                    name: admin?.username || admin?.name || values.email,
+                    role: 'System Administrator',
+                    email: admin?.email || values.email,
+                });
+                navigate('/dashboard');
+            } catch (err) {
+                notifyError(extractErrorMessage(err, 'Login failed. Please check your credentials.'));
+            } finally {
+                setIsLoading(false);
+            }
         },
     });
     const formData = formik.values;

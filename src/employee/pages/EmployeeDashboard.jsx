@@ -22,7 +22,6 @@ const STATUS_CLASS = {
 const EmployeeDashboard = () => {
   const navigate = useNavigate();
   const resumeCase = useCaseStore((s) => s.resumeCase);
-  const resetCase = useCaseStore((s) => s.resetCase);
   const [cases, setCases] = useState([]);
   const [stats, setStats] = useState({ total: 0, completed: 0, pending: 0, plan: 'free' });
   const [loading, setLoading] = useState(true);
@@ -142,7 +141,7 @@ const EmployeeDashboard = () => {
           </div>
           <button
             type="button"
-            onClick={() => { resetCase(); navigate('/new-case'); }}
+            onClick={() => { useCaseStore.getState().resetCase(); navigate('/new-case'); }}
             className="inline-flex h-12 items-center justify-center gap-2 rounded-xl border border-[#9cd5ff]/45 bg-[#072ac8] px-6 font-semibold text-white shadow-lg shadow-[#072ac8]/35 transition-all hover:-translate-y-0.5 hover:bg-[#0a2472] focus:outline-none focus:ring-4 focus:ring-[#9cd5ff]/45"
           >
             <Plus size={18} /> New Case
@@ -231,7 +230,7 @@ const EmployeeDashboard = () => {
             No cases yet.{' '}
             <button
               type="button"
-              onClick={() => navigate('/new-case')}
+              onClick={() => { useCaseStore.getState().resetCase(); navigate('/new-case'); }}
               className="font-semibold text-[#6ab0e3] underline decoration-[#9cd5ff] underline-offset-4 hover:text-[#12344D]"
             >
               Create your first case

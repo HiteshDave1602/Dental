@@ -13,6 +13,7 @@ const titleByPath = {
   '/my-cases': 'My Cases',
   // '/library': 'Library',
   '/subscription': 'Subscription & Billing',
+  // '/credits': 'Credit History',
   '/settings': 'Settings',
 };
 
