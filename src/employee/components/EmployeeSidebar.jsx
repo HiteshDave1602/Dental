@@ -1,7 +1,5 @@
 import {
   BadgePlus,
-  ChevronLeft,
-  ChevronRight,
   Coins,
   FolderKanban,
   LayoutDashboard,
@@ -9,6 +7,7 @@ import {
   LogOut,
   Settings,
   WalletCards,
+  X,
 } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { cn } from '../../utils/utils';
@@ -45,7 +44,7 @@ const railItems = [
   { to: '/credits', icon: Coins, label: 'Credit History' },
 ];
 
-const EmployeeSidebar = ({ collapsed, onToggle }) => {
+const EmployeeSidebar = ({ collapsed, mobileOpen = false, onCloseMobile = () => {} }) => {
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const { employeeUser, logoutEmployee } = useEmployee();
@@ -60,24 +59,40 @@ const EmployeeSidebar = ({ collapsed, onToggle }) => {
     navigate('/new-case');
   };
 
+  const showFullMenu = !collapsed || mobileOpen;
+  const showRail = collapsed && !mobileOpen;
+
   return (
-    <aside
-      className={cn(
-        'fixed inset-y-0 left-0 z-30 hidden border-r border-white/15 bg-[#2541b2] p-2 transition-[width] duration-300 ease-in-out lg:flex',
-        collapsed ? 'w-16' : 'w-[280px]'
+    <>
+      {/* Semi-transparent backdrop behind the mobile drawer — tapping it closes
+          the sidebar. Hidden on lg+ where the sidebar is always visible. */}
+      {mobileOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/40 lg:hidden"
+          onClick={onCloseMobile}
+          aria-hidden="true"
+        />
       )}
-    >
+
+      <aside
+        onClickCapture={onCloseMobile}
+        className={cn(
+          'fixed inset-y-0 left-0 z-50 flex w-[280px] border-r border-white/15 bg-[#2541b2] p-2 transition-transform duration-300 ease-in-out lg:transition-[width,transform]',
+          mobileOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full lg:translate-x-0',
+          collapsed ? 'lg:w-16' : ''
+        )}
+      >
       <button
         type="button"
-        onClick={onToggle}
-        aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-        title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-        className="absolute -right-3 top-5 z-20 grid h-7 w-7 place-content-center rounded-full border border-[#072ac8] bg-[#c1e5ff] text-[#072ac8] shadow-[0_4px_12px_rgba(7,42,200,0.3)] transition-all hover:scale-105 hover:bg-[#072ac8] hover:text-white"
+        onClick={onCloseMobile}
+        aria-label="Close sidebar"
+        title="Close sidebar"
+        className="absolute right-3 top-5 z-20 grid h-7 w-7 place-content-center rounded-full border border-white/30 bg-[#2541b2] text-white transition-colors hover:bg-white/20 lg:hidden"
       >
-        {collapsed ? <ChevronRight size={15} /> : <ChevronLeft size={15} />}
+        <X size={15} />
       </button>
 
-      {collapsed && (
+      {showRail && (
         <div className="flex w-12 shrink-0 flex-col items-center rounded-xl border border-white/15 bg-[#2541b2] py-3 text-white shadow-[0_10px_28px_rgba(37,65,178,0.35)]">
           <Link
             to="/dashboard"
@@ -168,7 +183,7 @@ const EmployeeSidebar = ({ collapsed, onToggle }) => {
       <div
         className={cn(
           'min-w-0 flex-1 flex-col overflow-hidden px-3 pb-2 pt-3 transition-opacity duration-200',
-          collapsed ? 'hidden opacity-0' : 'flex opacity-100'
+          showFullMenu ? 'flex opacity-100' : 'hidden opacity-0'
         )}
       >
         <div className="mb-5 flex items-center gap-3 px-1">
@@ -264,6 +279,7 @@ const EmployeeSidebar = ({ collapsed, onToggle }) => {
         </div>
       </div>
     </aside>
+    </>
   );
 };
 

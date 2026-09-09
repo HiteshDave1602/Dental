@@ -21,7 +21,6 @@ import {
 import { ThemeProvider } from '@mui/material/styles';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
 import SearchIcon from '@mui/icons-material/Search';
-import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import JobDashboard from './JobDashboard';
 import Viewer3D from './Viewer3D';
 import theme from './theme';
@@ -47,7 +46,7 @@ const isJobFailed = (state) => FAILED_STATUSES.has(state?.status) || FAILED_STAT
 // any it missed via seed-point search, and swap scan bodies if desired. Once
 // the detection set is confirmed, the user moves on to Step 5 (Angle Calculation),
 // which computes angles for the selected teeth.
-function PathfinderApp({ caseId, scanFile, onComplete }) {
+function PathfinderApp({ caseId, scanFile, onComplete, requestGo = 0 }) {
   const [job, setJob] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -164,6 +163,13 @@ function PathfinderApp({ caseId, scanFile, onComplete }) {
   }, [seedPoint, caseId, isSearching, job]);
 
   const [searchVendorId, setSearchVendorId] = useState('');
+
+  // The shared top navigation bar's Continue button lands here: advance to the
+  // Angle Calculation step, but only once the alignment job is ready for review.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (requestGo && isJobReady(job)) onComplete?.();
+  }, [requestGo, job]);
 
   return (
     <ThemeProvider theme={theme}>
@@ -428,25 +434,6 @@ function PathfinderApp({ caseId, scanFile, onComplete }) {
                         ))} */}
                       </FormGroup>
                     </Paper>
-
-                    {/* Move to Angle Calculation */}
-                    <Card elevation={0} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 3 }}>
-                      <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
-                        <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
-                          Once the implant detection set looks correct, continue to compute the insertion angles for the selected teeth.
-                        </Typography>
-                        <Button
-                          onClick={onComplete}
-                          variant="contained"
-                          color="primary"
-                          fullWidth
-                          endIcon={<ArrowForwardIcon />}
-                          sx={{ py: { xs: 1, sm: 1.2 }, borderRadius: 2, fontWeight: 700 }}
-                        >
-                          Next: Angle Calculation
-                        </Button>
-                      </CardContent>
-                    </Card>
                   </Stack>
                 </Box>
               </Box>

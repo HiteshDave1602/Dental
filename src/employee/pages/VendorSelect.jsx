@@ -1,13 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Boxes, ChevronLeft, Loader2 } from 'lucide-react';
+import { Boxes, Loader2 } from 'lucide-react';
 import api, { extractErrorMessage, notifyError } from '../../Script/api';
 import { useCaseStore } from '../../store/caseStore';
 
-const Spinner = () => (
-  <span className="inline-block h-4 w-4 rounded-full border-2 border-current border-t-transparent animate-spin" />
-);
-
-const VendorSelect = ({ onBack, onComplete }) => {
+const VendorSelect = ({ onComplete, requestGo = 0 }) => {
   const { caseId, selectedVendorIds, setSelectedVendorIds } = useCaseStore();
 
   const [vendors, setVendors] = useState([]);
@@ -39,6 +35,7 @@ const VendorSelect = ({ onBack, onComplete }) => {
   }, [selectedVendorIds, setSelectedVendorIds]);
 
   const handleContinue = async () => {
+    if (submitting) return;
     if (!caseId) {
       notifyError('No active case');
       return;
@@ -61,6 +58,13 @@ const VendorSelect = ({ onBack, onComplete }) => {
       setSubmitting(false);
     }
   };
+
+  // The shared top navigation bar's Continue button lands here: its own
+  // validation (vendors selected, case exists) and API save still apply.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (requestGo) handleContinue();
+  }, [requestGo]);
 
   return (
     <section className="space-y-4">
@@ -131,29 +135,6 @@ const VendorSelect = ({ onBack, onComplete }) => {
           </div>
         )}
       </article>
-
-      {/* Navigation */}
-      <div className="sticky bottom-0 z-10 -mx-3 mt-6 flex items-center justify-between gap-3 border-t border-[#9cd5ff]/60 bg-[#FCFDF6]/95 px-3 py-3 pr-20 backdrop-blur sm:-mx-4 sm:px-4 sm:pr-24 lg:-mx-6 lg:px-6">
-        <button
-          type="button"
-          onClick={onBack}
-          disabled={submitting}
-          className="h-10 shrink-0 px-5 rounded-full border border-[#9cd5ff] text-[#12344D] hover:bg-[#c1e5ff]/40 disabled:opacity-40 inline-flex items-center gap-2"
-        >
-          <ChevronLeft size={16} />
-          Back
-        </button>
-
-        <button
-          type="button"
-          disabled={submitting || selectedVendorIds.length === 0}
-          onClick={handleContinue}
-          className="h-10 px-6 rounded-full bg-[#072ac8] text-white hover:bg-[#0a2472] disabled:opacity-70 disabled:cursor-not-allowed inline-flex items-center gap-2 font-semibold"
-        >
-          {submitting ? <Spinner /> : null}
-          {submitting ? 'Saving...' : 'Continue'}
-        </button>
-      </div>
     </section>
   );
 };

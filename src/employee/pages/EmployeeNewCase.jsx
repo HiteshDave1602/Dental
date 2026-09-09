@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FileUp, Lock, Sparkles, UploadCloud } from 'lucide-react';
+import { UploadCloud } from 'lucide-react';
 import StepProgress from '../components/StepProgress';
 import ScanPreview3D from '../components/ScanPreview3D';
-import ResultsViewer3D from '../components/ResultsViewer3D';
 import VendorSelect from './VendorSelect';
 // PATHFINDER INTEGRATION: after Step 1 (New Case → Next), the scan-body
 // alignment workflow ported from the standalone `pathfinder` app takes over.
@@ -123,6 +122,12 @@ const EmployeeNewCase = () => {
 
   const [savingFinal, setSavingFinal] = useState(false);
   const [savedRef, setSavedRef] = useState(null);
+
+  // Increment counter that lets the shared top navigation bar ask the current
+  // step's child component (VendorSelect / PathfinderWorkflow) to run its own
+  // "Continue" logic. Reset whenever the step changes so an old trigger never
+  // fires against a newly mounted step.
+  const [requestGo, setRequestGo] = useState(0);
 
   // ── Analysis (Steps 3–4) — ephemeral, not persisted in caseStore ─────────
   const [caseData, setCaseData] = useState(null);               // api.employee.cases.get(caseId) — for patient_scan_url
@@ -247,6 +252,7 @@ const EmployeeNewCase = () => {
 
   const goToStep = (step) => {
     setStep(step);
+    setRequestGo(0);
     if (caseId) {
       api.employee.cases.updateStep(caseId, step).catch(() => { });
     }
@@ -378,95 +384,42 @@ const EmployeeNewCase = () => {
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
-  // ── STEP 4 — Alignment review ────────────────────────────────────────────
-  // The scan was uploaded in step 2, which submitted an alignment job for this
-  // case. The workflow reads that job rather than creating its own, so results
-  // are recorded against the case and a refresh resumes instead of restarting.
-  // Once the detection set is confirmed, it advances to the Angle Calculation step.
-  if (currentStep === 4) {
-    return (
-      <div>
-        <StepProgress activeStep={4} />
-        <div className="mt-4 flex items-center justify-between gap-3">
-          <button
-            type="button"
-            onClick={() => goToStep(3)}
-            className="h-10 px-5 rounded-full border border-[#9cd5ff] text-[#12344D] hover:bg-[#c1e5ff]/40"
-          >
-            ← Back to Vendor Selection
-          </button>
-          <div className="flex items-center gap-4">
-            <button
-              type="button"
-              onClick={confirmStartNew}
-              className="text-xs font-semibold text-[#12344D]/45 hover:text-rose-600"
-            >
-              Start Over
-            </button>
-            <div className="text-sm text-[#12344D]/60">
-              {caseRef ? <>Case <span className="text-[#12344D] font-semibold">{caseRef}</span></> : null}
-              {patient.fullName ? <span className="ml-3">{patient.fullName}</span> : null}
-            </div>
-          </div>
-        </div>
-        <div className="mt-4">
-          <PathfinderWorkflow
-            caseId={caseId}
-            scanFile={upload}
-            onComplete={() => goToStep(5)}
-          />
-        </div>
-      </div>
-    );
-  }
+  // ── Shared top navigation — back / continue for every step lives up here ──
+  const backLabel =
+    currentStep === 2 ? 'Back to Patient Details'
+      : currentStep === 3 ? 'Back to Scan Upload'
+        : currentStep === 4 ? 'Back to Vendor Selection'
+          : currentStep === 5 ? 'Back to Alignment Review'
+            : '';
 
-  // ── STEP 5 — Angle Calculation ───────────────────────────────────────────
-  // The last stage of the new-case flow. A 3D viewer shows the scan body
-  // alongside the patient mesh; the user picks which detected instances
-  // ("teeth") to compute angles for, sees visibility controls, and clicks
-  // "Calculate Selected Teeth Angle" to compute angles for ONLY those teeth.
-  // From there: place correctors, assign tooth numbers, and download results.
-  if (currentStep === 5) {
-    return (
-      <div>
-        <StepProgress activeStep={5} />
-        <div className="mt-4 flex items-center justify-between gap-3">
-          <button
-            type="button"
-            onClick={() => goToStep(4)}
-            className="h-10 px-5 rounded-full border border-[#9cd5ff] text-[#12344D] hover:bg-[#c1e5ff]/40"
-          >
-            ← Back to Alignment Review
-          </button>
-          <div className="flex items-center gap-4">
-            <button
-              type="button"
-              onClick={confirmStartNew}
-              className="text-xs font-semibold text-[#12344D]/45 hover:text-rose-600"
-            >
-              Start Over
-            </button>
-            <div className="text-sm text-[#12344D]/60">
-              {caseRef ? <>Case <span className="text-[#12344D] font-semibold">{caseRef}</span></> : null}
-              {patient.fullName ? <span className="ml-3">{patient.fullName}</span> : null}
-            </div>
-          </div>
-        </div>
-        <div className="mt-4">
-          <SuperimposeStep
-            caseId={caseId}
-            scanFile={upload}
-            onComplete={() => { navigate('/dashboard'); resetCase(); }}
-          />
-        </div>
-      </div>
-    );
-  }
+  const continueLabel = currentStep >= 3 ? 'Continue' : 'Next Step';
+  const isWorking = (currentStep === 1 && creatingCase) || (currentStep === 2 && savingStep2);
+  const workingLabel = currentStep === 1 ? 'Creating...' : 'Saving...';
 
-  return (
-    <div className="pb-20">
-      {(caseId || currentStep > 1) && (
-        <div className="mb-2 flex justify-end">
+  const continueDisabled =
+    (currentStep === 1 && (!step1Valid || creatingCase)) ||
+    (currentStep === 2 && (!canGoToStep3 || savingStep2));
+
+  const handleTopContinue = () => {
+    if (currentStep === 1) return handleStep1Next();
+    if (currentStep === 2) return handleNextFromStep2();
+    if (currentStep === 3 || currentStep === 4) return setRequestGo((n) => n + 1);
+    return null;
+  };
+
+  const topNav = (
+    <div className={currentStep > 1 ? 'mt-4 mb-4 flex items-center justify-between gap-3' : 'mt-4 mb-4 flex items-center justify-end gap-3'}>
+      {currentStep > 1 && (
+        <button
+          type="button"
+          onClick={() => goToStep(currentStep - 1)}
+          className="h-10 px-5 rounded-full border border-[#9cd5ff] text-[#12344D] hover:bg-[#c1e5ff]/40"
+        >
+          ← {backLabel}
+        </button>
+      )}
+      <div className="flex items-center gap-4">
+        {(caseId || currentStep > 1) && (
           <button
             type="button"
             onClick={confirmStartNew}
@@ -474,9 +427,36 @@ const EmployeeNewCase = () => {
           >
             Start Over
           </button>
+        )}
+        <div className="text-sm text-[#12344D]/60">
+          {caseRef ? <>Case <span className="text-[#12344D] font-semibold">{caseRef}</span></> : null}
+          {patient.fullName ? <span className="ml-3">{patient.fullName}</span> : null}
         </div>
-      )}
+        {currentStep <= 4 && (
+          <button
+            type="button"
+            disabled={continueDisabled}
+            onClick={handleTopContinue}
+            title={
+              currentStep === 1
+                ? !step1Valid ? 'Fill all mandatory fields to continue' : ''
+                : currentStep === 2 ? step2NextTitle : ''
+            }
+            className="h-10 px-6 rounded-full bg-[#072ac8] text-white hover:bg-[#0a2472] disabled:opacity-70 disabled:cursor-not-allowed inline-flex items-center gap-2 font-semibold whitespace-nowrap"
+          >
+            {isWorking ? <Spinner /> : null}
+            {isWorking ? workingLabel : `${continueLabel}${currentStep < 3 ? ' →' : ''}`}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="pb-20">
       <StepProgress activeStep={currentStep} />
+
+      {topNav}
 
       {/* ── STEP 1 — Patient Details ─────────────────────────────────────── */}
       {currentStep === 1 && (
@@ -529,19 +509,6 @@ const EmployeeNewCase = () => {
               placeholder="Enter any remarks (optional)"
               onChange={(e) => handlePatientChange('notes', e.target.value)}
             />
-          </div>
-
-          <div className="flex justify-end">
-            <button
-              type="button"
-              disabled={!step1Valid || creatingCase}
-              onClick={handleStep1Next}
-              title={!step1Valid ? 'Fill all mandatory fields to continue' : ''}
-              className="gradient-btn h-10 px-6 text-white font-semibold disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center gap-2"
-            >
-              {creatingCase ? <Spinner /> : !step1Valid ? <Lock size={14} /> : <Sparkles size={14} />}
-              {creatingCase ? 'Creating...' : 'Next Step →'}
-            </button>
           </div>
         </section>
       )}
@@ -627,39 +594,43 @@ const EmployeeNewCase = () => {
       {/* ── STEP 3 — Vendor Selection ──────────────────────────────────────── */}
       {currentStep === 3 && (
         <VendorSelect
-          onBack={() => goToStep(2)}
           onComplete={() => {
             goToStep(4);
           }}
+          requestGo={requestGo}
         />
       )}
 
-      {/* ── Navigation bar ──────────────────────────────────────────────── */}
-      <div className="sticky bottom-0 z-10 -mx-3 mt-6 flex items-center justify-between gap-3 border-t border-[#9cd5ff]/60 bg-[#FCFDF6]/95 px-3 py-3 pr-20 backdrop-blur sm:-mx-4 sm:px-4 sm:pr-24 lg:-mx-6 lg:px-6">
-        {/* <button
-          type="button"
-          onClick={() => goToStep(Math.max(currentStep - 1, 1))}
-          disabled={currentStep === 1}
-          className="h-10 shrink-0 px-5 rounded-full border border-[#9cd5ff] text-[#12344D] hover:bg-[#c1e5ff]/40 disabled:opacity-40"
-        >
-          Back
-        </button> */}
+      {/* ── STEP 4 — Alignment review ──────────────────────────────────────── */}
+      {/* The scan was uploaded in step 2, which submitted an alignment job for
+          this case. The workflow reads that job rather than creating its own,
+          so results are recorded against the case and a refresh resumes instead
+          of restarting. Once the detection set is confirmed, it advances to the
+          Angle Calculation step. */}
+      {currentStep === 4 && (
+        <div className="mt-4">
+          <PathfinderWorkflow
+            caseId={caseId}
+            scanFile={upload}
+            onComplete={() => goToStep(5)}
+            requestGo={requestGo}
+          />
+        </div>
+      )}
 
-        {currentStep === 1 ? null /* Next handled inside step 1 */ : currentStep === 2 ? (
-          <div className="min-w-0 text-right">
-            <button
-              type="button"
-              disabled={savingStep2}
-              onClick={handleNextFromStep2}
-              title={step2NextTitle}
-              className="h-10 max-w-full whitespace-nowrap px-5 rounded-full bg-[#072ac8] text-white hover:bg-[#0a2472] disabled:opacity-70 disabled:cursor-not-allowed inline-flex items-center gap-2"
-            >
-              {savingStep2 ? <Spinner /> : canGoToStep3 ? <FileUp size={14} /> : <Lock size={14} />}
-              {savingStep2 ? 'Saving...' : 'Next Step →'}
-            </button>
-          </div>
-        ) : currentStep === 3 ? null /* VendorSelect handles its own buttons */ : null}
-      </div>
+      {/* ── STEP 5 — Angle Calculation ─────────────────────────────────────── */}
+      {/* The last stage of the new-case flow: a 3D viewer shows the scan body
+          alongside the patient mesh; the user computes angles for the selected
+          teeth, places correctors, assigns tooth numbers, and downloads results. */}
+      {currentStep === 5 && (
+        <div className="mt-4">
+          <SuperimposeStep
+            caseId={caseId}
+            scanFile={upload}
+            onComplete={() => { navigate('/dashboard'); resetCase(); }}
+          />
+        </div>
+      )}
     </div>
   );
 };
