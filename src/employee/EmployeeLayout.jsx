@@ -26,6 +26,9 @@ const EmployeeLayout = () => {
   const { employeeAuth } = useEmployee();
   const { pathname } = useLocation();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  // Mobile drawer: the sidebar is hidden below lg, so this controls whether it
+  // is shown as an overlay drawer. Toggled from the topbar hamburger button.
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const hasHydrated = useAuthStore.persist?.hasHydrated?.() ?? true;
 
   if (!hasHydrated) {
@@ -44,14 +47,18 @@ const EmployeeLayout = () => {
     <div className="employee-shell flex w-full overflow-x-hidden">
       <EmployeeSidebar
         collapsed={isSidebarCollapsed}
-        onToggle={() => setIsSidebarCollapsed((current) => !current)}
+        mobileOpen={isMobileSidebarOpen}
+        onCloseMobile={() => setIsMobileSidebarOpen(false)}
       />
       <div
         className={`flex-1 min-h-screen min-w-0 bg-white transition-[padding] duration-300 ease-in-out ${
           isSidebarCollapsed ? 'lg:pl-16' : 'lg:pl-[280px]'
         }`}
       >
-        <EmployeeTopbar title={titleByPath[pathname] || 'MyPathFinder'} />
+        <EmployeeTopbar
+          title={titleByPath[pathname] || 'MyPathFinder'}
+          onToggleSidebar={() => setIsMobileSidebarOpen((open) => !open)}
+        />
         <main
           className={`p-3 sm:p-4 lg:p-6 max-w-full min-h-[calc(100vh-88px)] overflow-x-hidden ${
             pathname === '/dashboard' ? 'bg-white' : 'bg-[#FCFDF6]'

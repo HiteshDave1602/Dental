@@ -7,7 +7,6 @@ import {
     History,
     Settings,
     LogOut,
-    X,
     Users,
     Microscope
 } from 'lucide-react';
@@ -46,12 +45,6 @@ const Sidebar = ({ isOpen, onClose }) => {
                             <span className="text-[10px] font-bold text-clinical-teal uppercase tracking-widest mt-1 block">Admin Portal</span>
                         </div>
                     </div>
-                    <button
-                        onClick={onClose}
-                        className="lg:hidden p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-lg transition-all"
-                    >
-                        <X size={20} />
-                    </button>
                 </div>
 
                 <nav className="flex-1 px-4 py-4 space-y-1 overflow-y-auto custom-scrollbar">

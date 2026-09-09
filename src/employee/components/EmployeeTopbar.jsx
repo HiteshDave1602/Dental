@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import { Bell, Search, User, Crown, LogOut } from 'lucide-react';
+import { Bell, Crown, LogOut, Menu, Search, User } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useEmployee } from '../../context/EmployeeContext';
 
-const EmployeeTopbar = ({ title }) => {
+const EmployeeTopbar = ({ title, onToggleSidebar }) => {
   const { employeeUser, logoutEmployee } = useEmployee();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
@@ -24,11 +24,23 @@ const EmployeeTopbar = ({ title }) => {
 
   return (
     <header className="sticky top-3 z-10 mx-3 mt-3 flex h-[76px] items-center justify-between rounded-2xl border border-[#9cd5ff] bg-white px-4 shadow-[0_10px_30px_rgba(37,65,178,0.20)] sm:px-6">
-      <div>
-        <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#6ab0e3]">
-          MyPathFinder
-        </p>
-        <h1 className="employee-heading text-xl font-bold tracking-tight text-[#072ac8]">{title}</h1>
+      <div className="flex items-center gap-2.5">
+        <button
+          type="button"
+          onClick={onToggleSidebar}
+          aria-label="Open sidebar"
+          title="Open sidebar"
+          className="grid h-10 w-10 place-content-center rounded-xl border border-[#9cd5ff] bg-[#f6fbfe] text-[#072ac8] transition-all hover:border-[#0a2472] hover:bg-[#0a2472] hover:text-white lg:hidden"
+        >
+          <Menu size={18} />
+        </button>
+
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#6ab0e3]">
+            MyPathFinder
+          </p>
+          <h1 className="employee-heading text-xl font-bold tracking-tight text-[#072ac8]">{title}</h1>
+        </div>
       </div>
 
       <div className="flex items-center gap-2.5">
