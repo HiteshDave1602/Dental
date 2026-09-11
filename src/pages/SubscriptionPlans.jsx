@@ -11,7 +11,7 @@ import {
 import { cn } from '../utils/utils';
 import Button from '../components/ui/Button';
 import CreatePlanModal from '../components/modals/CreatePlanModal';
-import api from '../Script/api';
+import api, { extractErrorMessage } from '../Script/api';
 
 const planIcons = [ClipboardList, Rocket, Building2];
 
@@ -55,7 +55,7 @@ const SubscriptionPlans = () => {
             }));
             setPlans(items);
         } catch (err) {
-            setPageError(err.response?.data?.detail || err.response?.data?.message || 'Failed to load plans.');
+            setPageError(extractErrorMessage(err, 'Failed to load plans.'));
         } finally {
             setLoading(false);
         }
@@ -87,7 +87,7 @@ const SubscriptionPlans = () => {
             setSelectedPlan(null);
             await loadPlans();
         } catch (err) {
-            setModalError(err.response?.data?.detail || err.response?.data?.message || 'Failed to save plan.');
+            setModalError(extractErrorMessage(err, 'Failed to save plan.'));
         } finally {
             setIsSavingPlan(false);
         }
@@ -98,7 +98,7 @@ const SubscriptionPlans = () => {
             await api.plans.remove(planId);
             await loadPlans();
         } catch (err) {
-            setPageError(err.response?.data?.detail || err.response?.data?.message || 'Failed to delete or archive plan.');
+            setPageError(extractErrorMessage(err, 'Failed to delete or archive plan.'));
         }
     };
 

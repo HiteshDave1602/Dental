@@ -15,7 +15,7 @@ import { Archive, CheckCircle2, AlertTriangle, Loader2 } from 'lucide-react';
  * names the offending asset, so it is shown verbatim instead of being
  * flattened into "upload failed".
  */
-const BundleUpload = ({ file, onChange, status, message, report, disabled }) => {
+const BundleUpload = ({ file, onChange, status, message, report, disabled, error = '' }) => {
     const inputRef = useRef(null);
     const [dragging, setDragging] = useState(false);
 
@@ -30,11 +30,13 @@ const BundleUpload = ({ file, onChange, status, message, report, disabled }) => 
 
     const borderClass = dragging
         ? 'border-teal-500 bg-teal-50/40'
-        : status === 'error'
+        : error && !file
             ? 'border-rose-300 bg-rose-50/30'
-            : status === 'valid'
-                ? 'border-teal-300 bg-teal-50/20'
-                : 'border-slate-200 hover:border-teal-500/50 bg-slate-50/30 hover:bg-teal-50/30';
+            : status === 'error'
+                ? 'border-rose-300 bg-rose-50/30'
+                : status === 'valid'
+                    ? 'border-teal-300 bg-teal-50/20'
+                    : 'border-slate-200 hover:border-teal-500/50 bg-slate-50/30 hover:bg-teal-50/30';
 
     return (
         <div className="space-y-2.5">
@@ -122,6 +124,10 @@ const BundleUpload = ({ file, onChange, status, message, report, disabled }) => 
                         is the only thing that makes this fixable. */}
                     <p className="text-[12px] font-semibold text-rose-700">{message}</p>
                 </div>
+            )}
+
+            {error && !file && !message && status !== 'error' && (
+                <p className="text-xs text-rose-600 ml-1 font-medium">{error}</p>
             )}
         </div>
     );

@@ -381,7 +381,7 @@ const api = {
         list: async (params) => apiService.get('/plans', params),
         get: async (planId) => apiService.get(`/plans/${planId}`),
         create: async (payload) => apiService.post('/plans', payload),
-        update: async (planId, payload) => apiService.patch(`/plans/${planId}`, payload),
+        update: async (planId, payload) => apiService.put(`/plans/${planId}`, payload),
         remove: async (planId) => apiService.delete(`/plans/${planId}`),
     },
 

@@ -89,7 +89,7 @@ const EmployeeSubscription = () => {
         ))}
       </section>
 
-      <section className="glass-card overflow-hidden">
+      {/* <section className="glass-card overflow-hidden">
         <div className="px-4 py-3 border-b border-[#9cd5ff]/40 bg-[#f6fbfe]">
           <h3 className="employee-heading text-[#12344D]">Transaction History</h3>
         </div>
@@ -99,7 +99,7 @@ const EmployeeSubscription = () => {
             Credit History page
           </a>.
         </div>
-      </section>
+      </section> */}
     </div>
   );
 };

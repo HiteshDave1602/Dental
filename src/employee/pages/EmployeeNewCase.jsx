@@ -11,6 +11,7 @@ import SuperimposeStep from '../pathfinder/SuperimposeStep';
 import { useCaseStore } from '../../store/caseStore';
 import api, { extractErrorMessage, notifyError, notifySuccess, getAlignmentState, RESOLVED_BASE_URL } from '../../Script/api';
 import EmployeeCreditIndicator from '../components/EmployeeCreditIndicator';
+import { cacheScanFile, getCachedScanFile, clearCachedScanFile } from '../utils/scanCache';
 
 const MB = 1024 * 1024;
 const fileSizeInMb = (size) => `${(size / MB).toFixed(2)} MB`;
@@ -119,6 +120,22 @@ const EmployeeNewCase = () => {
   const [scanAlreadyUploaded, setScanAlreadyUploaded] = useState(false);
   const [wireframeMode, setWireframeMode] = useState(false);
   const [orthographicMode, setOrthographicMode] = useState(false);
+
+  // Restore cached scan file from sessionStorage when resuming a case (e.g.
+  // after page refresh). The File object can't survive a refresh on its own,
+  // but the cache utility serialised it when the upload completed.
+  // Defers the state update past React's initial commit to avoid the
+  // "Cannot read properties of undefined (reading 'startTime')" error.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (caseId && !upload) {
+      const cached = getCachedScanFile(caseId);
+      if (cached) {
+        const id = setTimeout(() => setUpload(cached), 0);
+        return () => clearTimeout(id);
+      }
+    }
+  }, []);
 
   const [savingFinal, setSavingFinal] = useState(false);
   const [savedRef, setSavedRef] = useState(null);
@@ -299,6 +316,7 @@ const EmployeeNewCase = () => {
       // needs to be posted beforehand.
       if (upload && !hasJob) {
         await api.employee.cases.uploadScan(activeCaseId, upload);
+        cacheScanFile(activeCaseId, upload);
       }
       await api.employee.cases.updateStep(activeCaseId, 3);
       setStep(3);
@@ -361,6 +379,7 @@ const EmployeeNewCase = () => {
   };
 
   const handleStartNew = () => {
+    clearCachedScanFile(caseId);
     resetCase();
     setPatient({ fullName: '', age: '', caseDate: new Date().toISOString().split('T')[0], notes: '' });
     setUpload(null);
@@ -612,7 +631,7 @@ const EmployeeNewCase = () => {
           <PathfinderWorkflow
             caseId={caseId}
             scanFile={upload}
-            onComplete={() => goToStep(5)}
+            onComplete={() => { clearCachedScanFile(caseId); goToStep(5); }}
             requestGo={requestGo}
           />
         </div>
