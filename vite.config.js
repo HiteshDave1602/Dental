@@ -23,6 +23,13 @@ export default defineConfig({
   },
   server: {
     port: 5174,
+    // Docker Desktop on Windows often doesn't propagate native file-change
+    // events from bind-mounted volumes, so Vite never sees edits. Polling the
+    // filesystem guarantees HMR/full-reload triggers on every save.
+    watch: {
+      usePolling: true,
+      interval: 300,
+    },
     // Fail loudly if 5174 is taken instead of silently moving to the next free
     // port. A different port is a different origin, which the /api proxy below
     // doesn't fix by itself for anything that bypasses it (see assetUrl in

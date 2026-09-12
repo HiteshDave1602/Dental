@@ -1,0 +1,15 @@
+services:
+  dental-frontend:
+    container_name: dental-frontend
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "5174:5174"
+    volumes:
+      - .:/app
+      - /app/node_modules
+    env_file:
+      - .env
+    environment:
+      - CHOKIDAR_USEPOLLING=true

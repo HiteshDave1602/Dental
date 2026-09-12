@@ -100,19 +100,19 @@ const Login = () => {
                     <div className="relative flex h-full flex-col justify-between">
                         
                         <div className="max-w-xs pt-14 md:pt-0">
-                            <p className="mb-3 text-sm font-semibold text-white/75">{isRegistering ? 'Already a member?' : 'New to ImplaScan?'}</p>
+                            <p className="mb-3 text-sm font-semibold text-white/75">{isRegistering ? 'Already a member?' : 'New to PathFinder?'}</p>
                             <h1 className="text-3xl font-bold leading-tight md:text-4xl">
                                 {isRegistering ? 'Welcome back.' : 'Hello, welcome!'}
                             </h1>
                             <p className="mt-4 text-sm leading-6 text-white/80">
-                                {isRegistering ? 'Sign in to continue managing your dental analysis workspace.' : 'Create an account and bring clarity to every implant analysis.'}
+                                {isRegistering ? 'Sign in to continue managing your dental analysis workspace.' : ''}
                             </p>
                             <button
                                 type="button"
                                 onClick={switchMode}
-                                className="mt-7 rounded-xl border border-white/75 px-6 py-2.5 text-sm font-bold text-white transition hover:bg-white hover:text-[#0d9488] focus:outline-none focus:ring-4 focus:ring-white/30"
+                                // className="mt-7 rounded-xl border border-white/75 px-6 py-2.5 text-sm font-bold text-white transition hover:bg-white hover:text-[#0d9488] focus:outline-none focus:ring-4 focus:ring-white/30"
                             >
-                                {isRegistering ? 'Login' : 'Register'}
+                                {isRegistering ? 'Login' : ''}
                             </button>
                         </div>
                     </div>
@@ -123,7 +123,7 @@ const Login = () => {
                         <div className="mb-8">
                             <p className="text-sm font-semibold text-[#0d9488]">{isRegistering ? 'GET STARTED' : 'ADMIN PORTAL'}</p>
                             <h2 className="mt-2 text-3xl font-bold tracking-tight text-slate-900">{isRegistering ? 'Create account' : 'Login'}</h2>
-                            <p className="mt-2 text-sm text-slate-500">{isRegistering ? 'Set up your ImplaScan workspace.' : 'Use your credentials to access the dashboard.'}</p>
+                            <p className="mt-2 text-sm text-slate-500">{isRegistering ? 'Set up your PathFinder workspace.' : 'Use your credentials to access the dashboard.'}</p>
                         </div>
 
                         <form onSubmit={formik.handleSubmit} noValidate className="space-y-4">
@@ -149,11 +149,12 @@ const Login = () => {
                                 <span className="mb-2 block text-sm font-semibold text-slate-700">Password</span>
                                 <div className="relative">
                                     <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                                    <input className={`${inputClass} px-11`} type={showPassword ? 'text' : 'password'} value={formData.password} onChange={updateField('password')} placeholder="••••••••" required />
+                                    <input className={`${inputClass} px-11`} type={showPassword ? 'text' : 'password'} value={formData.password} onChange={updateField('password')} onBlur={formik.handleBlur} name="password" placeholder="••••••••" aria-invalid={Boolean(formik.touched.password && formik.errors.password)} />
                                     <button type="button" onClick={() => setShowPassword((current) => !current)} aria-label={showPassword ? 'Hide password' : 'Show password'} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 transition hover:text-slate-700">
                                         {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                                     </button>
                                 </div>
+                                {formik.touched.password && formik.errors.password && <p className="mt-1 text-xs font-medium text-red-600">{formik.errors.password}</p>}
                             </label>
 
                             {!isRegistering && <div className="flex justify-end"><button type="button" className="text-sm font-semibold text-[#0d9488] hover:underline">Forgot password?</button></div>}
@@ -162,11 +163,10 @@ const Login = () => {
                                 {isLoading ? 'Please wait…' : isRegistering ? 'Create account' : 'Login'}
                             </button>
                         </form>
-
-                        <p className="mt-7 text-center text-sm text-slate-500">
+                        {/* <p className="mt-7 text-center text-sm text-slate-500">
                             {isRegistering ? 'Already have an account?' : "Don't have an account?"}{' '}
                             <button type="button" onClick={switchMode} className="font-bold text-[#0d9488] hover:underline">{isRegistering ? 'Login' : 'Register'}</button>
-                        </p>
+                        </p> */}
                     </div>
                 </div>
             </section>

@@ -100,7 +100,7 @@ const Billing = () => {
     ];
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-6 p-10">
             <div>
                 <h1 className="text-2xl lg:text-[32px] font-bold text-slate-900 tracking-tight leading-none mb-2">
                     Billing &amp; Subscriptions

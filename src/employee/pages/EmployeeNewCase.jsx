@@ -11,6 +11,7 @@ import SuperimposeStep from '../pathfinder/SuperimposeStep';
 import { useCaseStore } from '../../store/caseStore';
 import api, { extractErrorMessage, notifyError, notifySuccess, getAlignmentState, RESOLVED_BASE_URL } from '../../Script/api';
 import EmployeeCreditIndicator from '../components/EmployeeCreditIndicator';
+import { cacheScanFile, getCachedScanFile, clearCachedScanFile } from '../utils/scanCache';
 
 const MB = 1024 * 1024;
 const fileSizeInMb = (size) => `${(size / MB).toFixed(2)} MB`;
@@ -119,6 +120,22 @@ const EmployeeNewCase = () => {
   const [scanAlreadyUploaded, setScanAlreadyUploaded] = useState(false);
   const [wireframeMode, setWireframeMode] = useState(false);
   const [orthographicMode, setOrthographicMode] = useState(false);
+
+  // Restore the cached scan file when resuming a case (e.g. after a page
+  // refresh). The File object can't survive a refresh on its own, but the cache
+  // utility stashed it when the upload completed. The read is async, so it
+  // lands after the initial commit either way; the cancelled flag keeps it from
+  // setting state on an unmounted page. Mount-only by design: this restores the
+  // scan once, and must not re-run and overwrite a file the user just picked.
+  useEffect(() => {
+    if (!caseId || upload) return undefined;
+    let cancelled = false;
+    getCachedScanFile(caseId).then((cached) => {
+      if (!cancelled && cached) setUpload(cached);
+    });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const [savingFinal, setSavingFinal] = useState(false);
   const [savedRef, setSavedRef] = useState(null);
@@ -300,6 +317,10 @@ const EmployeeNewCase = () => {
       if (upload && !hasJob) {
         await api.employee.cases.uploadScan(activeCaseId, upload);
       }
+      // Cache whichever scan this case is working with, including when the job
+      // already exists and the upload above was skipped — a refresh later in
+      // the flow needs the File either way.
+      if (upload) cacheScanFile(activeCaseId, upload);
       await api.employee.cases.updateStep(activeCaseId, 3);
       setStep(3);
     } catch (err) {
@@ -361,6 +382,7 @@ const EmployeeNewCase = () => {
   };
 
   const handleStartNew = () => {
+    clearCachedScanFile(caseId);
     resetCase();
     setPatient({ fullName: '', age: '', caseDate: new Date().toISOString().split('T')[0], notes: '' });
     setUpload(null);
@@ -627,7 +649,13 @@ const EmployeeNewCase = () => {
           <SuperimposeStep
             caseId={caseId}
             scanFile={upload}
-            onComplete={() => { navigate('/dashboard'); resetCase(); }}
+            onComplete={() => {
+              // Superimpose is done and the results are saved server-side, so
+              // the cached scan has nothing left to resume — drop it.
+              clearCachedScanFile(caseId);
+              navigate('/dashboard');
+              resetCase();
+            }}
           />
         </div>
       )}

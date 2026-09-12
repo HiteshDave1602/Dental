@@ -80,12 +80,13 @@ const apiClient = axios.create({
     baseURL: RESOLVED_BASE_URL,
 });
 
-export const notifyError = (text, backgroundColor = '#FEE2E2', color = '#B91C1C') => toast.error(text, {
+export const notifyError = (text, backgroundColor = '#FEE2E2', color = '#B91C1C', options = {}) => toast.error(text, {
     position: 'top-right',
     style: {
         backgroundColor,
         color,
     },
+    ...options,
 });
 
 export const notifySuccess = (text, backgroundColor = '#DCFCE7', color = '#166534') => toast.success(text, {
@@ -95,6 +96,63 @@ export const notifySuccess = (text, backgroundColor = '#DCFCE7', color = '#16653
         color,
     },
 });
+
+// The "still within the plan duration" gate shared by the exhaustion checks
+// below. A plan the backend already marks expired — or whose subscription end
+// date has passed — gets its own expiry messaging, not the "contact the admin"
+// prompt.
+const isPlanDurationActive = (plan) => {
+    if (!plan) return false;
+    if (plan.status === 'expired') return false;
+    if (plan.end_date) {
+        const end = new Date(plan.end_date);
+        if (!Number.isNaN(end.getTime()) && end.getTime() <= Date.now()) return false;
+    }
+    return true;
+};
+
+export const isCreditsExhausted = (plan) =>
+    isPlanDurationActive(plan) && Number(plan?.credits ?? 0) < 1;
+
+export const isCasesLimitHit = (plan) => {
+    if (!isPlanDurationActive(plan)) return false;
+    const limit = Number(plan?.cases_limit ?? 0);
+    if (limit === -1 || limit <= 0) return false;
+    return plan.cases_remaining !== null && plan.cases_remaining !== undefined
+        ? Number(plan.cases_remaining) <= 0
+        : Number(plan?.cases_used_this_month ?? 0) >= limit;
+};
+
+export const isPlanUsageExhausted = (plan) => isCreditsExhausted(plan) || isCasesLimitHit(plan);
+
+// Fire-and-forget (safe to call wherever the plan loads): surfaces a dedicated
+// toast for whichever recurring usage is exhausted (credits vs. cases limit)
+// while the plan is still within its duration. Fixed toastIds keep each
+// warning from stacking as it re-fires across pages; once dismissed they will
+// show again on the next check.
+export const notifyUsageExhausted = (plan) => {
+    const creditsOver = isCreditsExhausted(plan);
+    const casesOver = isCasesLimitHit(plan);
+    if (!creditsOver && !casesOver) return false;
+
+    if (creditsOver) {
+        notifyError(
+            'Your credits are exhausted. Please contact the admin for a top-up.',
+            undefined,
+            undefined,
+            { toastId: 'toast-credits-exhausted' }
+        );
+    }
+    if (casesOver) {
+        notifyError(
+            'The cases usage limit is hit. Please contact the admin for a top-up.',
+            undefined,
+            undefined,
+            { toastId: 'toast-cases-limit-hit' }
+        );
+    }
+    return true;
+};
 
 apiClient.interceptors.request.use(
     (config) => {
@@ -381,7 +439,7 @@ const api = {
         list: async (params) => apiService.get('/plans', params),
         get: async (planId) => apiService.get(`/plans/${planId}`),
         create: async (payload) => apiService.post('/plans', payload),
-        update: async (planId, payload) => apiService.patch(`/plans/${planId}`, payload),
+        update: async (planId, payload) => apiService.put(`/plans/${planId}`, payload),
         remove: async (planId) => apiService.delete(`/plans/${planId}`),
     },
 

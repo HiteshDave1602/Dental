@@ -13,7 +13,7 @@ import api from '../Script/api';
  * If the engine is unreachable the field degrades to a plain text input
  * rather than blocking library creation, and says so.
  */
-const AlignmentVendorSelect = ({ value, onChange, className = '' }) => {
+const AlignmentVendorSelect = ({ value, onChange, className = '', error = '' }) => {
     const [vendors, setVendors] = useState([]);
     const [state, setState] = useState('loading'); // loading | ready | unavailable
 
@@ -36,7 +36,8 @@ const AlignmentVendorSelect = ({ value, onChange, className = '' }) => {
     }, []);
 
     const inputClasses =
-        'h-12 w-full bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-4 focus:ring-teal-500/10 focus:border-teal-500 transition-all px-5 text-slate-700 font-medium text-sm';
+        'h-12 w-full bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-4 focus:ring-teal-500/10 focus:border-teal-500 transition-all px-5 text-slate-700 font-medium text-sm' +
+        (error ? ' border-rose-300 focus:border-rose-400 focus:ring-rose-500/10' : '');
 
     return (
         <div className={`space-y-2.5 ${className}`}>
@@ -83,6 +84,8 @@ const AlignmentVendorSelect = ({ value, onChange, className = '' }) => {
                 Links this library to the implant system the alignment engine detects. Required for a
                 case using this library to be analysed.
             </p>
+
+            {error && <p className="text-xs text-rose-600 ml-1 font-medium">{error}</p>}
         </div>
     );
 };
