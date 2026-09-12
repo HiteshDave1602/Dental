@@ -8,7 +8,7 @@ import {
   Plus,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import api from '../../Script/api';
+import api, { notifyUsageExhausted } from '../../Script/api';
 import { useCaseStore } from '../../store/caseStore';
 
 const STATUS_CLASS = {
@@ -57,6 +57,8 @@ const EmployeeDashboard = () => {
 
         const caseList = casesRes.data?.data || [];
         const planData = planRes.data?.data || {};
+
+        notifyUsageExhausted(planData);
 
         setCases(caseList);
         setStats({

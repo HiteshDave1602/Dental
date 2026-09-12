@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Coins, AlertTriangle } from 'lucide-react';
-import api from '../../Script/api';
+import api, { notifyUsageExhausted } from '../../Script/api';
 
 const EmployeeCreditIndicator = ({ autoHold = 0, compact = false }) => {
     const [plan, setPlan] = useState(null);
@@ -10,7 +10,10 @@ const EmployeeCreditIndicator = ({ autoHold = 0, compact = false }) => {
         let mounted = true;
         api.employee.subscription.myPlan()
             .then((res) => {
-                if (mounted) setPlan(res.data?.data || null);
+                if (!mounted) return;
+                const plan = res.data?.data || null;
+                setPlan(plan);
+                notifyUsageExhausted(plan);
             })
             .catch(() => {})
             .finally(() => { if (mounted) setLoading(false); });

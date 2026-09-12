@@ -121,20 +121,20 @@ const EmployeeNewCase = () => {
   const [wireframeMode, setWireframeMode] = useState(false);
   const [orthographicMode, setOrthographicMode] = useState(false);
 
-  // Restore cached scan file from sessionStorage when resuming a case (e.g.
-  // after page refresh). The File object can't survive a refresh on its own,
-  // but the cache utility serialised it when the upload completed.
-  // Defers the state update past React's initial commit to avoid the
-  // "Cannot read properties of undefined (reading 'startTime')" error.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  // Restore the cached scan file when resuming a case (e.g. after a page
+  // refresh). The File object can't survive a refresh on its own, but the cache
+  // utility stashed it when the upload completed. The read is async, so it
+  // lands after the initial commit either way; the cancelled flag keeps it from
+  // setting state on an unmounted page. Mount-only by design: this restores the
+  // scan once, and must not re-run and overwrite a file the user just picked.
   useEffect(() => {
-    if (caseId && !upload) {
-      const cached = getCachedScanFile(caseId);
-      if (cached) {
-        const id = setTimeout(() => setUpload(cached), 0);
-        return () => clearTimeout(id);
-      }
-    }
+    if (!caseId || upload) return undefined;
+    let cancelled = false;
+    getCachedScanFile(caseId).then((cached) => {
+      if (!cancelled && cached) setUpload(cached);
+    });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const [savingFinal, setSavingFinal] = useState(false);
@@ -316,8 +316,11 @@ const EmployeeNewCase = () => {
       // needs to be posted beforehand.
       if (upload && !hasJob) {
         await api.employee.cases.uploadScan(activeCaseId, upload);
-        cacheScanFile(activeCaseId, upload);
       }
+      // Cache whichever scan this case is working with, including when the job
+      // already exists and the upload above was skipped — a refresh later in
+      // the flow needs the File either way.
+      if (upload) cacheScanFile(activeCaseId, upload);
       await api.employee.cases.updateStep(activeCaseId, 3);
       setStep(3);
     } catch (err) {
@@ -631,7 +634,7 @@ const EmployeeNewCase = () => {
           <PathfinderWorkflow
             caseId={caseId}
             scanFile={upload}
-            onComplete={() => { clearCachedScanFile(caseId); goToStep(5); }}
+            onComplete={() => goToStep(5)}
             requestGo={requestGo}
           />
         </div>
@@ -646,7 +649,13 @@ const EmployeeNewCase = () => {
           <SuperimposeStep
             caseId={caseId}
             scanFile={upload}
-            onComplete={() => { navigate('/dashboard'); resetCase(); }}
+            onComplete={() => {
+              // Superimpose is done and the results are saved server-side, so
+              // the cached scan has nothing left to resume — drop it.
+              clearCachedScanFile(caseId);
+              navigate('/dashboard');
+              resetCase();
+            }}
           />
         </div>
       )}
