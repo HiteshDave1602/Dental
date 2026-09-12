@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
   Coins,
-  AlertTriangle,
   Mail,
   Crown,
   CalendarDays,
@@ -115,14 +114,6 @@ const EmployeeProfile = () => {
                 </span>
                 <span className="mb-1 text-sm text-[#12344D]/60">credits available</span>
               </div>
-              {(plan.credits_on_hold ?? 0) > 0 && (
-                <div className="flex items-center gap-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2">
-                  <AlertTriangle size={14} className="text-amber-600 shrink-0" />
-                  <span className="text-sm text-amber-700">
-                    <span className="font-semibold">{plan.credits_on_hold}</span> credit{plan.credits_on_hold !== 1 ? 's' : ''} on hold
-                  </span>
-                </div>
-              )}
               {plan.price_inr !== undefined && (
                 <p className="text-xs text-[#12344D]/50">
                   Plan price: ₹{(plan.price_inr || 0).toLocaleString('en-IN')}/month

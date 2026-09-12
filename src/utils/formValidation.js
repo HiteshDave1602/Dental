@@ -37,6 +37,6 @@ export const libraryValidationSchema = Yup.object({
         .typeError('Enter a valid number')
         .required('Angle degree is required'),
     manufacturer_id: Yup.string().trim(),
-    alignment_vendor_id: Yup.string().trim().required('Select an alignment vendor'),
+    alignment_vendor_id: Yup.string().trim().required('Alignment vendor is required'),
     bundleFile: Yup.mixed().required('A vendor bundle (.zip) is required'),
 });

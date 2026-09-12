@@ -4,7 +4,6 @@ import { useFormik } from 'formik';
 import Button from '../ui/Button';
 import Input from '../ui/Input';
 import api, { extractErrorMessage } from '../../Script/api';
-import AlignmentVendorSelect from '../AlignmentVendorSelect';
 import BundleUpload from '../BundleUpload';
 import { libraryValidationSchema } from '../../utils/formValidation';
 
@@ -188,14 +187,18 @@ const AddLibraryModal = ({ isOpen, onClose, onSuccess }) => {
                             </div>
                         </div>
 
-                        <AlignmentVendorSelect
-                            value={formik.values.alignment_vendor_id}
-                            onChange={(vendorId) => {
-                                formik.setFieldValue('alignment_vendor_id', vendorId);
-                                formik.setFieldTouched('alignment_vendor_id', true);
-                            }}
-                            error={formik.touched.alignment_vendor_id && formik.errors.alignment_vendor_id}
-                        />
+                        <div className="space-y-2.5">
+                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Alignment Vendor</label>
+                            <Input
+                                placeholder="e.g. VENDOR"
+                                name="alignment_vendor_name"
+                                value={formik.values.alignment_vendor_name}
+                                onChange={formik.handleChange}
+                                onBlur={formik.handleBlur}
+                                error={formik.touched.alignment_vendor_name && formik.errors.alignment_vendor_name}
+                                className="h-12 bg-white border-slate-200 rounded-lg focus:ring-teal-500/10 focus:border-teal-500 transition-all px-5 text-slate-700 font-medium text-sm"
+                            />
+                        </div>
 
                         <BundleUpload
                             file={formik.values.bundleFile}

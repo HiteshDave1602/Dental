@@ -10,7 +10,6 @@ import {
 } from 'lucide-react';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
-import AlignmentVendorSelect from '../components/AlignmentVendorSelect';
 import api, { RESOLVED_BASE_URL, extractErrorMessage, notifySuccess, notifyError } from '../Script/api';
 
 const ASSET_LABELS = {
@@ -219,12 +218,13 @@ const UpdateLibrary = () => {
                                 <label className="text-sm font-bold text-slate-900 ml-1">Angle Degree</label>
                                 <Input type="number" value={form.angle_degree} onChange={setField('angle_degree')} className="h-14 rounded-2xl bg-slate-50/50 border-slate-100 px-6 font-semibold focus:bg-white" />
                             </div>
-                            <div className="md:col-span-2">
-                                <AlignmentVendorSelect
+                            <div className="space-y-3 md:col-span-2">
+                                <label className="text-sm font-bold text-slate-900 ml-1">Alignment Vendor</label>
+                                <Input
                                     value={form.alignment_vendor_id}
-                                    onChange={(vendorId) =>
-                                        setForm((current) => ({ ...current, alignment_vendor_id: vendorId }))
-                                    }
+                                    onChange={setField('alignment_vendor_id')}
+                                    placeholder="e.g. VENDOR-001"
+                                    className="h-14 rounded-2xl bg-slate-50/50 border-slate-100 px-6 font-semibold focus:bg-white"
                                 />
                             </div>
                         </div>
@@ -288,7 +288,8 @@ const UpdateLibrary = () => {
                     <div className="bg-white rounded-[32px] p-8 shadow-xl shadow-slate-200/40 border border-slate-50">
                         <h2 className="text-lg font-bold text-slate-900 mb-6 font-primary">Library Details</h2>
                         <dl className="space-y-4 text-sm">
-                            <div className="flex justify-between"><dt className="text-slate-400 font-medium">Library ID</dt><dd className="font-bold text-slate-700 truncate max-w-[160px]">{library.id}</dd></div>
+                            <div className="flex justify-between"><dt className="text-slate-400 font-medium">Library Name</dt><dd className="font-bold text-slate-700 truncate max-w-[160px]">{library.company_name || '—'}</dd></div>
+                            <div className="flex justify-between"><dt className="text-slate-400 font-medium">Alignment Vendor</dt><dd className="font-bold text-slate-700 truncate max-w-[160px]">{library.alignment_vendor_id || '—'}</dd></div>
                             <div className="flex justify-between"><dt className="text-slate-400 font-medium">Angle Degree</dt><dd className="font-bold text-slate-700">{library.angle_degree ?? library.angle_alignment ?? '—'}°</dd></div>
                             <div className="flex justify-between"><dt className="text-slate-400 font-medium">Tolerance</dt><dd className="font-bold text-slate-700">{library.tolerance_degree ?? '—'}</dd></div>
                             <div className="flex justify-between"><dt className="text-slate-400 font-medium">Assets</dt><dd className="font-bold text-slate-700">{assets.length}</dd></div>

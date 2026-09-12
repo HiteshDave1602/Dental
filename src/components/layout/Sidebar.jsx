@@ -19,7 +19,7 @@ const Sidebar = ({ isOpen, onClose }) => {
     const location = useLocation();
     const { user, logout } = useGlobal();
     const { user: currentAdmin } = useContextProvider();
-    const displayName = currentAdmin?.username || currentAdmin?.name || currentAdmin?.email || user?.username || user?.email || 'Admin User';
+    const displayName = currentAdmin?.name || currentAdmin?.username || user?.name || user?.username || 'Admin User';
     const displayRole = currentAdmin?.role || user?.role || 'System Administrator';
     const avatarName = encodeURIComponent(displayName);
 
@@ -38,11 +38,11 @@ const Sidebar = ({ isOpen, onClose }) => {
                 isOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full"
             )}>
                 <div className="p-8 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <img src={pathfinderLogo} alt="My Pathfinder" className="h-12 w-12 rounded-xl bg-white object-contain p-0.5 shadow-lg shadow-teal-500/20" />
-                        <div>
-                            <h1 className="text-xl font-bold text-slate-900 tracking-tight leading-none">Path Finder</h1>
-                            <span className="text-[10px] font-bold text-clinical-teal uppercase tracking-widest mt-1 block">Admin Portal</span>
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                        <img src={pathfinderLogo} alt="My Pathfinder" className="h-12 w-12 rounded-xl bg-white object-contain p-0.5 shadow-lg shadow-teal-500/20 flex-shrink-0" />
+                        <div className="min-w-0">
+                            <h1 className="text-xl font-bold text-slate-900 tracking-tight leading-none truncate">Path Finder</h1>
+                            <span className="text-[10px] font-bold text-clinical-teal uppercase tracking-widest mt-1 block truncate">Admin Portal</span>
                         </div>
                     </div>
                 </div>
@@ -73,17 +73,17 @@ const Sidebar = ({ isOpen, onClose }) => {
                 <div className="p-6 border-t border-slate-50">
                     <Link to="/settings" className="block">
                         <div className="flex items-center justify-between group cursor-pointer p-2 rounded-xl hover:bg-slate-50 transition-all duration-300">
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-full bg-[#fef3c7] border-2 border-white shadow-sm flex items-center justify-center overflow-hidden">
+                            <div className="flex items-center gap-3 min-w-0 flex-1">
+                                <div className="w-10 h-10 rounded-full bg-[#fef3c7] border-2 border-white shadow-sm flex items-center justify-center overflow-hidden flex-shrink-0">
                                     <img
                                         src={`https://ui-avatars.com/api/?name=${avatarName}&background=fef3c7&color=92400e&bold=true`}
                                         alt="Admin"
                                         className="w-full h-full rounded-full"
                                     />
                                 </div>
-                                <div className="flex flex-col">
-                                    <span className="text-sm font-bold text-slate-900 leading-none">{displayName}</span>
-                                    <span className="text-[11px] font-medium text-slate-400 mt-1">{displayRole}</span>
+                                <div className="flex flex-col min-w-0 flex-1">
+                                    <span className="text-sm font-bold text-slate-900 leading-none truncate">{displayName}</span>
+                                    <span className="text-[11px] font-medium text-slate-400 mt-1 truncate">{displayRole}</span>
                                 </div>
                             </div>
                             <Settings size={18} className="text-slate-400 group-hover:text-slate-600 transition-colors" />

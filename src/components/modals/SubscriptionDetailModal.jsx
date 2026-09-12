@@ -5,7 +5,7 @@ import Input from '../ui/Input';
 import api, { extractErrorMessage, notifySuccess } from '../../Script/api';
 import { cn } from '../../utils/utils';
 
-const STATUS_OPTIONS = ['active', 'pending', 'paused', 'cancelled', 'expired'];
+const STATUS_OPTIONS = ['active', 'expired'];
 
 const SubscriptionDetailModal = ({ isOpen, onClose, subscriptionId, onUpdated }) => {
     const [sub, setSub] = useState(null);
@@ -145,22 +145,6 @@ const SubscriptionDetailModal = ({ isOpen, onClose, subscriptionId, onUpdated })
                                         {user?.username || String(sub.user_id).slice(0, 8) + '…'}
                                     </p>
                                     <p className="text-xs text-slate-500 font-mono truncate">{user?.email || sub.user_id}</p>
-                                </div>
-                            </div>
-
-                            {/* Dates */}
-                            <div className="grid grid-cols-2 gap-3">
-                                <div className="p-3 bg-blue-50 rounded-xl">
-                                    <p className="text-[10px] font-semibold text-slate-400 uppercase flex items-center gap-1">
-                                        <CalendarDays size={12} /> Started
-                                    </p>
-                                    <p className="text-sm font-bold text-slate-900 mt-1">{formatDate(sub.start_date)}</p>
-                                </div>
-                                <div className="p-3 bg-amber-50 rounded-xl">
-                                    <p className="text-[10px] font-semibold text-slate-400 uppercase flex items-center gap-1">
-                                        <CalendarDays size={12} /> Ends
-                                    </p>
-                                    <p className="text-sm font-bold text-slate-900 mt-1">{formatDate(sub.end_date)}</p>
                                 </div>
                             </div>
 
