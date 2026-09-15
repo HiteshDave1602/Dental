@@ -355,6 +355,20 @@ const api = {
             password,
         }),
         signup: async (payload) => apiService.post('/admin/auth/signup', payload),
+        // Public, rate-limited (5/hr) password recovery. Enumeration-safe by
+        // design: the endpoint returns the same body whether or not the account
+        // exists, so callers must never branch on the response.
+        forgotPassword: async (email) => apiService.post('/admin/auth/forgot-password', { email }),
+        // Public, rate-limited (10/hr). token is the JWT from the email link.
+        resetPassword: async (token, newPassword) =>
+            apiService.post('/admin/auth/reset-password', { token, new_password: newPassword }),
+        // Stateless JWT auth: the backend has no server-side invalidation, so
+        // the caller still must clear the stored token locally afterwards.
+        logout: async (token) => apiClient.post('/admin/auth/logout', {}, token ? {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        } : {}),
     },
 
     admin: {

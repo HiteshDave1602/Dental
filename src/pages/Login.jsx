@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useFormik } from 'formik';
 import { Mail, Lock, Eye, EyeOff, Microscope, UserRound } from 'lucide-react';
 import { useGlobal } from '../context/GlobalContext';
@@ -157,7 +157,7 @@ const Login = () => {
                                 {formik.touched.password && formik.errors.password && <p className="mt-1 text-xs font-medium text-red-600">{formik.errors.password}</p>}
                             </label>
 
-                            {!isRegistering && <div className="flex justify-end"><button type="button" className="text-sm font-semibold text-[#0d9488] hover:underline">Forgot password?</button></div>}
+                            {!isRegistering && <div className="flex justify-end"><Link to="/forgot-password" className="text-sm font-semibold text-[#0d9488] hover:underline">Forgot password?</Link></div>}
 
                             <button type="submit" disabled={isLoading} className="mt-2 w-full rounded-xl bg-[#0d9488] py-3.5 text-sm font-bold text-white shadow-lg shadow-teal-500/25 transition hover:bg-[#0c857a] disabled:cursor-wait disabled:opacity-75">
                                 {isLoading ? 'Please wait…' : isRegistering ? 'Create account' : 'Login'}

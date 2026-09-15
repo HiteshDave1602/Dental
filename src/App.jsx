@@ -20,6 +20,8 @@ import { DEMO_MODE } from './config/demoMode';
 import { useAuthStore } from './store/authStore';
 
 const Login = lazy(() => import('./pages/Login'));
+const ForgotPassword = lazy(() => import('./pages/ForgotPassword'));
+const AdminResetPassword = lazy(() => import('./pages/ResetPassword'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 // ToleranceConfig removed: a static page with hardcoded vendor names, a
 // "± %" input (tolerance is measured in degrees), no state and a Save button
@@ -48,6 +50,8 @@ const AdminAppRouter = () => {
         {!canAccessApp ? (
           <>
             <Route path="/login" element={<Login />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<AdminResetPassword />} />
             <Route path="*" element={<Navigate to="/login" replace />} />
           </>
         ) : (
