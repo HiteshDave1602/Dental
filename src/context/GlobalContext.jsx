@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { DEMO_ADMIN, DEMO_MODE } from '../config/demoMode';
+import api from '../Script/api';
 
 const GlobalContext = createContext();
 
@@ -42,7 +43,22 @@ export const GlobalProvider = ({ children }) => {
         localStorage.removeItem('user');
     }, []);
 
-    const logout = () => {
+    const logout = async () => {
+        // Stateless JWT auth: the backend has no server-side token
+        // invalidation, so hitting /admin/auth/logout with the current token
+        // then clearing local storage is the entire logout. The call is
+        // best-effort — a 4xx/5xx (including 401 for an already-expired
+        // session) is treated the same as success: the local session is always
+        // cleared. The router guard below redirects to /login once auth is
+        // false.
+        const token = sessionStorage.getItem('token');
+        if (token) {
+            try {
+                await api.auth.logout(token);
+            } catch {
+                // fall through to local cleanup on any failure
+            }
+        }
         setAuth({ isAuthenticated: DEMO_MODE, token: null });
         setUser(DEMO_MODE ? DEMO_ADMIN : { name: '', role: '' });
         sessionStorage.removeItem('user');
