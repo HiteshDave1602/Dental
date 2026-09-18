@@ -30,14 +30,14 @@ const fileUrl = (p) => assetUrl(p);
 // Local draft + Save button pattern: dragging the slider only updates the
 // preview; Save commits the rotation to the backend (which rewrites both STLs).
 function AnalogRotationControl({ instanceIndex, savedDeg, onSave, onDraftChange }) {
-  const [draft, setDraft] = useState(savedDeg);
+  const [draft, setDraft] = useState(savedDeg ?? 0);
   const [saving, setSaving] = useState(false);
   const [justSaved, setJustSaved] = useState(false);
   const [error, setError] = useState('');
 
   // Re-sync the draft when the backend value changes (e.g. another save, or
   // a /calculate-angles re-run rewrites the field).
-  useEffect(() => { setDraft(savedDeg); }, [savedDeg]);
+  useEffect(() => { setDraft(savedDeg ?? 0); }, [savedDeg]);
 
   // Push every numeric draft to the parent so the viewer can rotate the loaded
   // STL in real time (delta = draft - saved). Skips non-numeric in-progress

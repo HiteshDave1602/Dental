@@ -149,7 +149,11 @@ const AddLibraryModal = ({ isOpen, onClose, onSuccess }) => {
                             <div className="space-y-2.5">
                                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Tolerance Degree</label>
                                 <Input
-                                    placeholder="0.02"
+                                    type="number"
+                                    step="0.5"
+                                    min={1}
+                                    max={90}
+                                    placeholder="e.g. 5"
                                     name="tolerance_degree"
                                     value={formik.values.tolerance_degree}
                                     onChange={formik.handleChange}
@@ -176,6 +180,10 @@ const AddLibraryModal = ({ isOpen, onClose, onSuccess }) => {
                             <div className="space-y-2.5">
                                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Angle Degree</label>
                                 <Input
+                                    type="number"
+                                    step="0.5"
+                                    min={0}
+                                    max={90}
                                     placeholder="e.g. 15"
                                     name="angle_degree"
                                     value={formik.values.angle_degree}
@@ -191,11 +199,11 @@ const AddLibraryModal = ({ isOpen, onClose, onSuccess }) => {
                             <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Alignment Vendor</label>
                             <Input
                                 placeholder="e.g. VENDOR"
-                                name="alignment_vendor_name"
-                                value={formik.values.alignment_vendor_name}
+                                name="alignment_vendor_id"
+                                value={formik.values.alignment_vendor_id}
                                 onChange={formik.handleChange}
                                 onBlur={formik.handleBlur}
-                                error={formik.touched.alignment_vendor_name && formik.errors.alignment_vendor_name}
+                                error={formik.touched.alignment_vendor_id && formik.errors.alignment_vendor_id}
                                 className="h-12 bg-white border-slate-200 rounded-lg focus:ring-teal-500/10 focus:border-teal-500 transition-all px-5 text-slate-700 font-medium text-sm"
                             />
                         </div>
