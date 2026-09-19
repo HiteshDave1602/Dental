@@ -15,7 +15,6 @@ import { cacheScanFile, getCachedScanFile, clearCachedScanFile } from '../utils/
 
 const MB = 1024 * 1024;
 const fileSizeInMb = (size) => `${(size / MB).toFixed(2)} MB`;
-const CREDIT_COST_PER_CASE = 3;
 
 // ── Step 1 validation ─────────────────────────────────────────────────────────
 
@@ -490,7 +489,7 @@ const EmployeeNewCase = () => {
             <input
               className={`glass-input h-11 px-3 w-full ${fieldErrors.fullName ? 'border-rose-400/60' : ''}`}
               placeholder="Enter patient full name"
-              value={patient.fullName}
+              value={patient.fullName || ''}
               onChange={(e) => handlePatientChange('fullName', e.target.value)}
             />
             <FieldError msg={fieldErrors.fullName} />
@@ -505,7 +504,7 @@ const EmployeeNewCase = () => {
                 min="1"
                 max="120"
                 placeholder="Enter patient age"
-                value={patient.age}
+                value={patient.age || ''}
                 onChange={(e) => handlePatientChange('age', e.target.value)}
               />
               <FieldError msg={fieldErrors.age} />
@@ -516,7 +515,7 @@ const EmployeeNewCase = () => {
               <input
                 className={`glass-input h-11 px-3 w-full ${fieldErrors.caseDate ? 'border-rose-400/60' : ''}`}
                 type="date"
-                value={patient.caseDate}
+                value={patient.caseDate || ''}
                 onChange={(e) => handlePatientChange('caseDate', e.target.value)}
               />
               <FieldError msg={fieldErrors.caseDate} />
@@ -527,7 +526,7 @@ const EmployeeNewCase = () => {
             <label className="block text-sm font-medium text-[#12344D] mb-1">Remarks</label>
             <textarea
               className="glass-input px-3 py-2 w-full min-h-28"
-              value={patient.notes}
+              value={patient.notes || ''}
               placeholder="Enter any remarks (optional)"
               onChange={(e) => handlePatientChange('notes', e.target.value)}
             />
@@ -547,7 +546,7 @@ const EmployeeNewCase = () => {
           <article className="glass-card p-5">
             <h2 className="employee-heading text-lg text-[#12344D]">Upload Patient Scan Data</h2>
             <div className="mt-3">
-              <EmployeeCreditIndicator autoHold={upload ? CREDIT_COST_PER_CASE : 0} />
+              <EmployeeCreditIndicator />
             </div>
             {!upload && scanAlreadyUploaded ? (
               <div className="mt-4 rounded-xl border border-emerald-300 bg-emerald-50 p-3 text-sm text-emerald-700">

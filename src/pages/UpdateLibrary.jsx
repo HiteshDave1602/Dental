@@ -211,12 +211,12 @@ const UpdateLibrary = () => {
                                 <Input value={form.manufacturer_id} onChange={setField('manufacturer_id')} className="h-14 rounded-2xl bg-slate-50/50 border-slate-100 px-6 font-semibold focus:bg-white" />
                             </div>
                             <div className="space-y-3">
-                                <label className="text-sm font-bold text-slate-900 ml-1">Tolerance Degree (µm)</label>
-                                <Input type="number" value={form.tolerance_degree} onChange={setField('tolerance_degree')} className="h-14 rounded-2xl bg-slate-50/50 border-slate-100 px-6 font-semibold focus:bg-white" />
+                                <label className="text-sm font-bold text-slate-900 ml-1">Tolerance Degree (°)</label>
+                                <Input type="number" step="0.5" min={1} max={90} value={form.tolerance_degree} onChange={setField('tolerance_degree')} className="h-14 rounded-2xl bg-slate-50/50 border-slate-100 px-6 font-semibold focus:bg-white" />
                             </div>
                             <div className="space-y-3">
                                 <label className="text-sm font-bold text-slate-900 ml-1">Angle Degree</label>
-                                <Input type="number" value={form.angle_degree} onChange={setField('angle_degree')} className="h-14 rounded-2xl bg-slate-50/50 border-slate-100 px-6 font-semibold focus:bg-white" />
+                                <Input type="number" step="0.5" min={0} max={90} value={form.angle_degree} onChange={setField('angle_degree')} className="h-14 rounded-2xl bg-slate-50/50 border-slate-100 px-6 font-semibold focus:bg-white" />
                             </div>
                             <div className="space-y-3 md:col-span-2">
                                 <label className="text-sm font-bold text-slate-900 ml-1">Alignment Vendor</label>

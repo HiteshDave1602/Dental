@@ -31,10 +31,13 @@ export const libraryValidationSchema = Yup.object({
     company_name: Yup.string().trim().required('Company name is required'),
     tolerance_degree: Yup.number()
         .typeError('Enter a valid number')
-        .min(0, 'Tolerance cannot be negative')
+        .min(1, 'Tolerance must be at least 1 degree')
+        .max(90, 'Tolerance cannot exceed 90 degrees')
         .required('Tolerance degree is required'),
     angle_degree: Yup.number()
         .typeError('Enter a valid number')
+        .min(0, 'Angle cannot be negative')
+        .max(90, 'Angle cannot exceed 90 degrees')
         .required('Angle degree is required'),
     manufacturer_id: Yup.string().trim(),
     alignment_vendor_id: Yup.string().trim().required('Alignment vendor is required'),

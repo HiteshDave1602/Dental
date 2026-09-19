@@ -55,7 +55,7 @@ const EmployeeSettings = () => {
             />
             <input
               className="glass-input h-11 px-3 bg-[#f6fbfe] text-[#12344D]/60"
-              value={employeeUser.email}
+              value={employeeUser.email || ''}
               readOnly
               title="Email cannot be changed"
             />

@@ -51,12 +51,12 @@ const fileUrl = (p) => assetUrl(p);
 // ── Per-instance analog clocking (same pattern as Pathfinder's ResultsDisplay)
 // Local draft + Save button: dragging only updates the preview; Save commits.
 function AnalogRotationControl({ instanceIndex, savedDeg, onSave, onDraftChange }) {
-  const [draft, setDraft] = useState(savedDeg);
+  const [draft, setDraft] = useState(savedDeg ?? 0);
   const [saving, setSaving] = useState(false);
   const [justSaved, setJustSaved] = useState(false);
   const [error, setError] = useState('');
 
-  useEffect(() => { setDraft(savedDeg); }, [savedDeg]);
+  useEffect(() => { setDraft(savedDeg ?? 0); }, [savedDeg]);
 
   useEffect(() => {
     if (!onDraftChange) return;

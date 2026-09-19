@@ -429,7 +429,7 @@ const api = {
         // Retires a library from new selections. Rows are kept, so cases that
         // already reference it are unaffected.
         setArchived: async (libraryId, isArchived) =>
-            apiService.patch(`/admin/libraries/${libraryId}/archive`, { is_archived: isArchived }),
+            apiService.put(`/admin/libraries/${libraryId}/archive`, { is_archived: isArchived }),
     },
 
     all_libraries: {
