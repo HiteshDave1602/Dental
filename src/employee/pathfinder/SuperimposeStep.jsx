@@ -142,6 +142,15 @@ function AnalogRotationControl({ instanceIndex, savedDeg, onSave, onDraftChange 
 //   5. Place Angle Correctors (scoped to same selection)
 //   6. Teeth assignment (map instances -> tooth numbers)
 //   7. Download results + finish
+
+// The instance → tooth mapping in the shape POST /user/cases/{id}/teeth takes.
+// That endpoint REPLACES the case's teeth, so this is always the full set.
+const teethPayload = (toothInstanceMap) =>
+  Object.entries(toothInstanceMap).map(([instanceIndex, toothNumber]) => ({
+    tooth_number: Number(toothNumber),
+    instance_index: Number(instanceIndex),
+  }));
+
 function SuperimposeStep({ caseId, scanFile, onComplete }) {
   const [job, setJob] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -294,6 +303,12 @@ function SuperimposeStep({ caseId, scanFile, onComplete }) {
       // Correctors are placed only for the teeth whose angle was computed AND
       // are still in the current selection — never for the whole instance set.
       const scope = visibleResults.map((r) => r.instance_index);
+      // Save the instance → tooth mapping BEFORE placing correctors, and wait
+      // for it. Placing correctors is where the backend records the results
+      // against the case's teeth; if the mapping only exists in this browser
+      // (it used to be saved on Finish), the backend sees a case with no teeth
+      // and has nothing to record the results against.
+      await api.employee.cases.addTeeth(caseId, teethPayload(toothInstanceMap));
       const result = await placeAngleCorrectors(caseId, scope);
       setJob((prev) => (prev ? { ...prev, placeCorrectors: result } : prev));
     } catch (e) {
@@ -301,7 +316,7 @@ function SuperimposeStep({ caseId, scanFile, onComplete }) {
     } finally {
       setIsPlacingCorrectors(false);
     }
-  }, [caseId, job, visibleResults, isPlacingCorrectors]);
+  }, [caseId, job, visibleResults, isPlacingCorrectors, toothInstanceMap]);
 
   // ── Targeted search / delete (false-positive review) ─────────────────────
   const handleSeedSelected = useCallback((point) => {
@@ -412,10 +427,7 @@ function SuperimposeStep({ caseId, scanFile, onComplete }) {
   // here must not block finishing.
   const saveTeeth = useCallback(() => {
     if (!caseId) return;
-    const teeth = Object.entries(toothInstanceMap).map(([instanceIndex, toothNumber]) => ({
-      tooth_number: Number(toothNumber),
-      instance_index: Number(instanceIndex),
-    }));
+    const teeth = teethPayload(toothInstanceMap);
     if (teeth.length === 0) return;
     api.employee.cases.addTeeth(caseId, teeth).catch(() => {});
   }, [caseId, toothInstanceMap]);
