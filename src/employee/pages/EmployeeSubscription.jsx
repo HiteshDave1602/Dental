@@ -30,10 +30,9 @@ const EmployeeSubscription = () => {
     return () => { mounted = false; };
   }, []);
 
-  const usedPercent = planData
-    ? planData.cases_limit === -1
-      ? 20
-      : Math.min(100, Math.round((planData.cases_used_this_month / planData.cases_limit) * 100))
+  const planCredits = planData?.plan_credits || 0;
+  const usedPercent = planCredits
+    ? Math.max(0, Math.min(100, Math.round(((planCredits - (planData.credits || 0)) / planCredits) * 100)))
     : 0;
 
   return (
@@ -53,9 +52,8 @@ const EmployeeSubscription = () => {
               <div className="h-full bg-[#6ab0e3]" style={{ width: `${usedPercent}%` }} />
             </div>
             <p className="text-xs text-[#12344D]/60 mt-2">
-              {planData.cases_used_this_month} of{' '}
-              {planData.cases_limit === -1 ? 'unlimited' : planData.cases_limit} cases used this month
-              {planData.cases_remaining !== null && ` · ${planData.cases_remaining} remaining`}
+              {planData.credits ?? 0} of {planCredits} credits left · {planData.cases_available ?? 0} cases available
+              {planData.end_date && ` · ends ${new Date(planData.end_date).toLocaleDateString('en-IN')}`}
             </p>
           </>
         ) : (
@@ -65,24 +63,21 @@ const EmployeeSubscription = () => {
 
       <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {plans.map((plan) => (
-          <article
-            key={plan.key}
-            className={`glass-card p-4 ${plan.highlight ? 'border-[#6ab0e3] shadow-[0_0_16px_rgba(37,65,178,.25)]' : ''}`}
-          >
+          <article key={plan.id} className="glass-card p-4">
             <h3 className="employee-heading text-[#12344D]">{plan.name}</h3>
             <p className="text-2xl text-[#072ac8] mt-2">
               {plan.price_inr === 0 ? 'Free' : `₹${plan.price_inr.toLocaleString('en-IN')}`}
             </p>
             <p className="text-sm text-[#12344D]/70 mt-2">
-              Limit: {plan.cases_limit === -1 ? 'Unlimited' : plan.cases_limit} cases/month
+              {plan.credits} credits · {plan.duration_days} days
             </p>
             <p className="text-xs text-[#12344D]/50 mt-1">{plan.description}</p>
-            {planData && plan.key !== planData.plan && (
+            {planData && plan.id !== planData.plan_id && (
               <button className="mt-3 w-full h-9 rounded-full border border-[#6ab0e3] text-[#072ac8] text-sm font-semibold hover:bg-[#c1e5ff]">
                 Upgrade
               </button>
             )}
-            {planData && plan.key === planData.plan && (
+            {planData && plan.id === planData.plan_id && (
               <p className="mt-3 text-xs text-emerald-600">✓ Current Plan</p>
             )}
           </article>

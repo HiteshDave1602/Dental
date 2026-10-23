@@ -66,8 +66,8 @@ const EmployeeDashboard = () => {
           completed: caseList.filter((item) => item.status === 'completed').length,
           pending: caseList.filter((item) => item.status === 'pending').length,
           plan: planData.display_name || 'Free',
-          casesUsed: planData.cases_used_this_month || 0,
-          casesLimit: planData.cases_limit === -1 ? '∞' : planData.cases_limit,
+          credits: planData.credits ?? 0,
+          casesAvailable: planData.cases_available ?? 0,
         });
       } catch {
         // Silently fall back to the empty dashboard state.
@@ -218,9 +218,9 @@ const EmployeeDashboard = () => {
             <h3 className="employee-heading text-lg font-bold text-[#12344D]">Recent Cases</h3>
             <p className="mt-0.5 text-xs text-[#12344D]/55">Your latest patient case activity</p>
           </div>
-          {stats.casesUsed !== undefined && (
+          {stats.credits !== undefined && (
             <p className="rounded-full bg-[#6ab0e3] px-3 py-1.5 text-xs font-medium text-white">
-              {stats.casesUsed} of {stats.casesLimit} cases used this month
+              {stats.credits} credits · {stats.casesAvailable} case{stats.casesAvailable !== 1 ? 's' : ''} available
             </p>
           )}
         </div>

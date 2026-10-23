@@ -51,10 +51,9 @@ const EmployeeProfile = () => {
     .slice(0, 2)
     .toUpperCase();
 
-  const usedPercent = plan
-    ? plan.cases_limit === -1
-      ? 0
-      : Math.min(100, Math.round(((plan.cases_used_this_month || 0) / plan.cases_limit) * 100))
+  const planCredits = plan?.plan_credits || 0;
+  const usedPercent = planCredits
+    ? Math.max(0, Math.min(100, Math.round(((planCredits - (plan.credits || 0)) / planCredits) * 100)))
     : 0;
 
   return (
@@ -140,14 +139,14 @@ const EmployeeProfile = () => {
             <div className="space-y-3">
               <div className="flex items-end gap-2">
                 <span className="employee-heading text-4xl font-black text-[#12344D]">
-                  {plan.cases_used_this_month ?? 0}
+                  {plan.cases_available ?? 0}
                 </span>
                 <span className="mb-1 text-sm text-[#12344D]/60">
-                  of {plan.cases_limit === -1 ? '∞' : plan.cases_limit ?? 0} cases
+                  cases available ({plan.cost_per_case ?? 3} credits each)
                 </span>
               </div>
 
-              {plan.cases_limit !== -1 && (
+              {planCredits > 0 && (
                 <div className="h-2.5 bg-[#c1e5ff] rounded-full overflow-hidden">
                   <div
                     className="h-full bg-[#6ab0e3] rounded-full transition-all duration-500"
@@ -157,12 +156,10 @@ const EmployeeProfile = () => {
               )}
 
               <div className="flex items-center justify-between text-xs text-[#12344D]/60">
-                <span>{usedPercent}% used this month</span>
-                {plan.cases_remaining !== null && plan.cases_remaining !== undefined && (
-                  <span className="font-semibold text-[#072ac8]">
-                    {plan.cases_remaining} remaining
-                  </span>
-                )}
+                <span>{usedPercent}% of plan credits used</span>
+                <span className="font-semibold text-[#072ac8]">
+                  {plan.credits ?? 0} of {planCredits} credits left
+                </span>
               </div>
             </div>
           ) : (
