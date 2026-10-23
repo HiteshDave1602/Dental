@@ -111,46 +111,24 @@ const isPlanDurationActive = (plan) => {
     return true;
 };
 
+// Exhausted = not enough credits left to process one more case.
 export const isCreditsExhausted = (plan) =>
-    isPlanDurationActive(plan) && Number(plan?.credits ?? 0) < 1;
+    isPlanDurationActive(plan) && Number(plan?.cases_available ?? 0) < 1;
 
-export const isCasesLimitHit = (plan) => {
-    if (!isPlanDurationActive(plan)) return false;
-    const limit = Number(plan?.cases_limit ?? 0);
-    if (limit === -1 || limit <= 0) return false;
-    return plan.cases_remaining !== null && plan.cases_remaining !== undefined
-        ? Number(plan.cases_remaining) <= 0
-        : Number(plan?.cases_used_this_month ?? 0) >= limit;
-};
+export const isPlanUsageExhausted = isCreditsExhausted;
 
-export const isPlanUsageExhausted = (plan) => isCreditsExhausted(plan) || isCasesLimitHit(plan);
-
-// Fire-and-forget (safe to call wherever the plan loads): surfaces a dedicated
-// toast for whichever recurring usage is exhausted (credits vs. cases limit)
-// while the plan is still within its duration. Fixed toastIds keep each
-// warning from stacking as it re-fires across pages; once dismissed they will
-// show again on the next check.
+// Fire-and-forget (safe to call wherever the plan loads): surfaces a toast when
+// credits are exhausted while the plan is still within its duration. A fixed
+// toastId keeps the warning from stacking as it re-fires across pages; once
+// dismissed it will show again on the next check.
 export const notifyUsageExhausted = (plan) => {
-    const creditsOver = isCreditsExhausted(plan);
-    const casesOver = isCasesLimitHit(plan);
-    if (!creditsOver && !casesOver) return false;
-
-    if (creditsOver) {
-        notifyError(
-            'Your credits are exhausted. Please contact the admin for a top-up.',
-            undefined,
-            undefined,
-            { toastId: 'toast-credits-exhausted' }
-        );
-    }
-    if (casesOver) {
-        notifyError(
-            'The cases usage limit is hit. Please contact the admin for a top-up.',
-            undefined,
-            undefined,
-            { toastId: 'toast-cases-limit-hit' }
-        );
-    }
+    if (!isCreditsExhausted(plan)) return false;
+    notifyError(
+        'Your credits are exhausted. Please contact the admin for a top-up.',
+        undefined,
+        undefined,
+        { toastId: 'toast-credits-exhausted' }
+    );
     return true;
 };
 

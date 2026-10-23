@@ -22,7 +22,7 @@ import JSZip from 'jszip';
 import { jsPDF } from 'jspdf';
 import {
   default as api,
-  getAlignmentState, placeAngleCorrectors, searchAroundPoint,
+  getAlignmentState, calculateAngles, placeAngleCorrectors, searchAroundPoint,
   rotateAnalog, setInstanceVendor, listVendors,
   extractErrorMessage, assetUrl,
 } from '../../Script/api';
@@ -147,6 +147,7 @@ function SuperimposeStep({ caseId, scanFile, onComplete }) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isPlacingCorrectors, setIsPlacingCorrectors] = useState(false);
+  const [isCalculatingAngles, setIsCalculatingAngles] = useState(false);
   const [seedPoint, setSeedPoint] = useState(null);
   const [isSearching, setIsSearching] = useState(false);
   const [searchFailureReason, setSearchFailureReason] = useState(null);
@@ -181,6 +182,29 @@ function SuperimposeStep({ caseId, scanFile, onComplete }) {
     () => (job?.calculateAngles?.instance_results ?? []).filter((r) => selectedIndexes.includes(r.instance_index)),
     [job?.calculateAngles?.instance_results, selectedIndexes]
   );
+
+  // Recalculation is offered when the current selection differs from the set
+  // the stored results were computed for.
+  const calculatedIndexes = useMemo(
+    () => new Set((job?.calculateAngles?.instance_results ?? []).map((r) => r.instance_index)),
+    [job?.calculateAngles?.instance_results]
+  );
+  const selectionMatchesCalculated = selectedIndexes.length === calculatedIndexes.size
+    && selectedIndexes.every((i) => calculatedIndexes.has(i));
+
+  // Same job, with per-instance results/correctors narrowed to the selection —
+  // fed to the 3D viewer and the ZIP/PDF so unselected teeth never leak out.
+  const scopedJob = useMemo(() => {
+    if (!job?.calculateAngles) return job;
+    const correctors = job.placeCorrectors?.instance_correctors;
+    return {
+      ...job,
+      calculateAngles: { ...job.calculateAngles, instance_results: visibleResults },
+      placeCorrectors: correctors
+        ? { ...job.placeCorrectors, instance_correctors: correctors.filter((c) => selectedIndexes.includes(c.instance_index)) }
+        : job.placeCorrectors,
+    };
+  }, [job, visibleResults, selectedIndexes]);
 
   // ── Vendors for scan-body swap dropdowns ─────────────────────────────────
   useEffect(() => {
@@ -244,6 +268,22 @@ function SuperimposeStep({ caseId, scanFile, onComplete }) {
   const handleVisibilityChange = (key) => {
     setVisibleInstances((prev) => ({ ...prev, [key]: !prev[key] }));
   };
+
+  const handleCalculateAngles = useCallback(async () => {
+    if (!caseId || !job || !isJobReady(job)) return;
+    if (selectedIndexes.length === 0 || isCalculatingAngles) return;
+    setError(null);
+    try {
+      setIsCalculatingAngles(true);
+      const result = await calculateAngles(caseId, selectedIndexes);
+      // New angles invalidate any correctors placed for the old ones.
+      setJob((prev) => (prev ? { ...prev, calculateAngles: result, placeCorrectors: null } : prev));
+    } catch (e) {
+      setError(extractErrorMessage(e, 'Failed to calculate angles'));
+    } finally {
+      setIsCalculatingAngles(false);
+    }
+  }, [caseId, job, selectedIndexes, isCalculatingAngles]);
 
   const handlePlaceAngleCorrectors = useCallback(async () => {
     if (!caseId || !job || !isJobReady(job)) return;
@@ -382,6 +422,7 @@ function SuperimposeStep({ caseId, scanFile, onComplete }) {
 
   const handleDownloadAll = async () => {
     if (isDownloading) return;
+    const job = scopedJob;
     setIsDownloading(true);
     try {
       const zip = new JSZip();
@@ -615,7 +656,7 @@ function SuperimposeStep({ caseId, scanFile, onComplete }) {
                   <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: '1fr 380px' }, gap: { xs: 2, sm: 3 }, minHeight: { xs: '400px', sm: '500px', md: '700px' } }}>
                     <Box sx={{ height: { xs: '400px', sm: '500px', md: '700px' } }}>
                       <Viewer3D
-                        job={job}
+                        job={scopedJob}
                         visibleInstances={visibleInstances}
                         hoveredInstance={hoveredInstance}
                         seedPoint={job.calculateAngles?.instance_results ? null : seedPoint}
@@ -767,7 +808,7 @@ function SuperimposeStep({ caseId, scanFile, onComplete }) {
                       )}
 
                       {/* 4) Calculate Selected Teeth Angle */}
-                      {/* {(!job.calculateAngles?.instance_results || !selectionMatchesCalculated) && (
+                      {(!job.calculateAngles?.instance_results || !selectionMatchesCalculated) && (
                         <Card elevation={0} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 3 }}>
                           <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
                             <Stack spacing={1}>
@@ -775,7 +816,7 @@ function SuperimposeStep({ caseId, scanFile, onComplete }) {
                               <Typography variant="caption" color="text.secondary">
                                 {selectedIndexes.length === 0
                                   ? 'Assign at least one tooth number above to calculate its angle.'
-                                  : job.calculateAngles?.instance_results && selectedIndexes.length !== calculatedIndexes.size
+                                  : job.calculateAngles?.instance_results && !selectionMatchesCalculated
                                     ? 'Selection changed since the last calculation — recalculate to update the angles.'
                                     : `${selectedIndexes.length} ${selectedIndexes.length === 1 ? 'tooth' : 'teeth'} assigned.`}
                               </Typography>
@@ -797,7 +838,7 @@ function SuperimposeStep({ caseId, scanFile, onComplete }) {
                             </Button>
                           </CardContent>
                         </Card>
-                      )} */}
+                      )}
 
                       {/* 5) Angle results for the selected teeth */}
                       {visibleResults.length > 0 && (
