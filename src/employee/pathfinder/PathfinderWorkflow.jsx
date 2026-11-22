@@ -21,6 +21,7 @@ import {
 import { ThemeProvider } from '@mui/material/styles';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
 import SearchIcon from '@mui/icons-material/Search';
+import InstanceWarnings from './InstanceWarnings';
 import JobDashboard from './JobDashboard';
 import Viewer3D from './Viewer3D';
 import theme from './theme';
@@ -56,7 +57,7 @@ function PathfinderApp({ caseId, scanFile, onComplete, requestGo = 0 }) {
   const scanUploadRetriedRef = useRef(false);
 
   const [visibleInstances, setVisibleInstances] = useState({ scene: true });
-  const [hoveredInstance] = useState(null);
+  const [hoveredInstance, setHoveredInstance] = useState(null);
 
   const loadState = useCallback(async () => {
     if (!caseId) return null;
@@ -252,6 +253,9 @@ function PathfinderApp({ caseId, scanFile, onComplete, requestGo = 0 }) {
                       children by default, and Card's overflow: hidden then clips
                       the search button out of view. */}
                   <Stack spacing={{ xs: 2, sm: 3 }} sx={{ overflowY: 'auto', maxHeight: { xs: '500px', sm: '600px', md: '700px' }, pr: { xs: 0, sm: 1 }, '& > *': { flexShrink: 0 } }}>
+
+                    {/* Detection warnings — the reviewer decides here whether to keep each instance */}
+                    <InstanceWarnings instances={job.summary.instances} onPreviewInstance={setHoveredInstance} />
 
                     {/* Search for a missed instance */}
                     <Card elevation={0} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 3 }}>
