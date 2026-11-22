@@ -274,6 +274,20 @@ function SuperimposeStep({ caseId, scanFile, onComplete }) {
     });
   }, [job?.summary?.instances]);
 
+  // Instances the engine wants a person to check (instances[].warnings:
+  // [{code, message}]). The engine's message is the explanation; show it as-is.
+  const flaggedInstances = useMemo(
+    () => (job?.summary?.instances ?? []).filter((i) => i.warnings?.length),
+    [job?.summary?.instances],
+  );
+
+  // Instances that got no corrector, keyed by index, with the engine's reason
+  // message (placeCorrectors.skipped_instances: [{instance_index, reason, message}]).
+  const skippedCorrectorByIndex = useMemo(
+    () => Object.fromEntries((job?.placeCorrectors?.skipped_instances ?? []).map((s) => [s.instance_index, s])),
+    [job?.placeCorrectors?.skipped_instances],
+  );
+
   const handleVisibilityChange = (key) => {
     setVisibleInstances((prev) => ({ ...prev, [key]: !prev[key] }));
   };
@@ -683,6 +697,32 @@ function SuperimposeStep({ caseId, scanFile, onComplete }) {
                         "Search Around Point" and "Calculate Selected Teeth Angle"
                         buttons, leaving only each card's heading visible. */}
                     <Stack spacing={{ xs: 2, sm: 3 }} sx={{ overflowY: 'auto', maxHeight: { xs: '500px', sm: '600px', md: '700px' }, pr: { xs: 0, sm: 1 }, '& > *': { flexShrink: 0 } }}>
+                      {/* 0) Detection warnings — hovering an entry highlights
+                             that instance in the viewer. */}
+                      {flaggedInstances.length > 0 && (
+                        <Alert severity="warning" sx={{ borderRadius: 3 }}>
+                          <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 0.5 }}>
+                            {flaggedInstances.length === 1 ? '1 instance needs checking' : `${flaggedInstances.length} instances need checking`}
+                          </Typography>
+                          <Stack spacing={1}>
+                            {flaggedInstances.map((inst) => (
+                              <Box
+                                key={inst.index}
+                                onMouseEnter={() => setHoveredInstance(inst.index)}
+                                onMouseLeave={() => setHoveredInstance(null)}
+                                sx={{ cursor: 'default' }}
+                              >
+                                {inst.warnings.map((w, k) => (
+                                  <Typography key={w.code ?? k} variant="body2">
+                                    <strong>Instance #{inst.index}:</strong> {w.message}
+                                  </Typography>
+                                ))}
+                              </Box>
+                            ))}
+                          </Stack>
+                        </Alert>
+                      )}
+
                       {/* 1) Teeth + library selection — the teeth assigned here
                              are the instances the angle calculation runs on. */}
                       <TeethLibraryPanel
@@ -874,6 +914,16 @@ function SuperimposeStep({ caseId, scanFile, onComplete }) {
                                         {Number(r.angle).toFixed(2)}°
                                       </Typography>
                                     </Stack>
+                                    {summaryInst?.warnings?.length > 0 && (
+                                      <Typography variant="caption" sx={{ display: 'block', mt: 0.5, color: 'warning.dark', fontWeight: 600 }}>
+                                        ⚠ Check before use — see the warning at the top.
+                                      </Typography>
+                                    )}
+                                    {skippedCorrectorByIndex[r.instance_index] && (
+                                      <Typography variant="caption" sx={{ display: 'block', mt: 0.5, color: 'error.main', fontWeight: 600 }}>
+                                        No corrector: {skippedCorrectorByIndex[r.instance_index].message}
+                                      </Typography>
+                                    )}
                                     {allVendors.length > 1 ? (
                                       <FormControl size="small" fullWidth sx={{ mt: 1 }}>
                                         <Select
